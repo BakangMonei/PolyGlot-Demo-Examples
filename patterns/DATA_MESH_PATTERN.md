@@ -1,4 +1,5 @@
 # Data Mesh Pattern Implementation
+
 ## Federated Data Governance with Domain Ownership
 
 ## Overview
@@ -55,7 +56,7 @@ spec:
       collections:
         - payment_analytics
         - payment_events
-  
+
   # Data contracts
   contracts:
     - name: payment-schema
@@ -65,7 +66,7 @@ spec:
         freshness: 1s
         completeness: 100%
         accuracy: 99.999%
-    
+
     - name: payment-analytics-schema
       version: "1.0.0"
       schema: schemas/payment-analytics-schema.json
@@ -73,7 +74,7 @@ spec:
         freshness: 5s
         completeness: 100%
         accuracy: 99.9%
-  
+
   # Access control
   access:
     - role: payments-team
@@ -82,7 +83,7 @@ spec:
       permissions: [read]
     - role: analytics-team
       permissions: [read]
-  
+
   # APIs
   apis:
     rest:
@@ -98,7 +99,7 @@ spec:
         - payments.created
         - payments.updated
         - payments.completed
-  
+
   # Lineage
   lineage:
     upstream:
@@ -120,7 +121,14 @@ spec:
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["payment_id", "customer_id", "amount", "currency", "status", "created_at"],
+  "required": [
+    "payment_id",
+    "customer_id",
+    "amount",
+    "currency",
+    "status",
+    "created_at"
+  ],
   "properties": {
     "payment_id": {
       "type": "string",
@@ -179,10 +187,10 @@ spec:
 
 ```javascript
 // data-mesh-governance.js
-const Ajv = require('ajv');
+const Ajv = require("ajv");
 const ajv = new Ajv({ allErrors: true });
-const mysql = require('./mysql-client');
-const mongodb = require('./mongodb-client');
+const mysql = require("./mysql-client");
+const mongodb = require("./mongodb-client");
 
 class DataMeshGovernance {
   constructor() {
@@ -190,14 +198,17 @@ class DataMeshGovernance {
     this.contracts = new Map();
     this.loadDataProducts();
   }
-  
+
   async loadDataProducts() {
     // Load data product definitions
-    const products = await mongodb.collection('data_products').find({}).toArray();
-    
+    const products = await mongodb
+      .collection("data_products")
+      .find({})
+      .toArray();
+
     for (const product of products) {
       this.dataProducts.set(product.metadata.name, product);
-      
+
       // Load contracts
       for (const contract of product.spec.contracts) {
         const contractSchema = await this.loadContractSchema(contract.schema);
@@ -205,95 +216,101 @@ class DataMeshGovernance {
           product: product.metadata.name,
           contract: contract,
           schema: contractSchema,
-          validator: ajv.compile(contractSchema)
+          validator: ajv.compile(contractSchema),
         });
       }
     }
   }
-  
+
   async loadContractSchema(schemaPath) {
     // Load schema from file or database
-    const fs = require('fs');
-    return JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
+    const fs = require("fs");
+    return JSON.parse(fs.readFileSync(schemaPath, "utf8"));
   }
-  
+
   async validateDataContract(dataProductName, contractName, data) {
     const contractKey = `${dataProductName}:${contractName}`;
     const contract = this.contracts.get(contractKey);
-    
+
     if (!contract) {
       throw new Error(`Contract not found: ${contractKey}`);
     }
-    
+
     // Validate schema
     const valid = contract.validator(data);
-    
+
     if (!valid) {
       const errors = contract.validator.errors;
       throw new Error(`Schema validation failed: ${JSON.stringify(errors)}`);
     }
-    
+
     // Validate quality metrics
-    const qualityMetrics = await this.calculateQualityMetrics(dataProductName, data);
+    const qualityMetrics = await this.calculateQualityMetrics(
+      dataProductName,
+      data
+    );
     const qualityContract = contract.contract.quality;
-    
+
     const qualityIssues = [];
-    
+
     if (qualityMetrics.freshness > qualityContract.freshness) {
       qualityIssues.push({
-        metric: 'freshness',
+        metric: "freshness",
         actual: qualityMetrics.freshness,
-        expected: qualityContract.freshness
+        expected: qualityContract.freshness,
       });
     }
-    
+
     if (qualityMetrics.completeness < qualityContract.completeness) {
       qualityIssues.push({
-        metric: 'completeness',
+        metric: "completeness",
         actual: qualityMetrics.completeness,
-        expected: qualityContract.completeness
+        expected: qualityContract.completeness,
       });
     }
-    
+
     if (qualityMetrics.accuracy < qualityContract.accuracy) {
       qualityIssues.push({
-        metric: 'accuracy',
+        metric: "accuracy",
         actual: qualityMetrics.accuracy,
-        expected: qualityContract.accuracy
+        expected: qualityContract.accuracy,
       });
     }
-    
+
     if (qualityIssues.length > 0) {
       await this.alertDataQualityIssue(dataProductName, qualityIssues);
     }
-    
+
     return {
       valid: true,
       qualityMetrics,
-      qualityIssues
+      qualityIssues,
     };
   }
-  
+
   async calculateQualityMetrics(dataProductName, data) {
     const product = this.dataProducts.get(dataProductName);
-    
+
     // Calculate freshness (time since last update)
     const freshness = await this.calculateFreshness(dataProductName, data);
-    
+
     // Calculate completeness (percentage of required fields)
-    const completeness = this.calculateCompleteness(data, product.spec.contracts[0].schema);
-    
+    const completeness = this.calculateCompleteness(
+      data,
+      product.spec.contracts[0].schema
+    );
+
     // Calculate accuracy (cross-validation with source systems)
     const accuracy = await this.calculateAccuracy(dataProductName, data);
-    
+
     return {
       freshness,
       completeness,
       accuracy,
-      calculated_at: new Date()
+      calculated_at: new Date(),
     };
   }
-  
+
   async calculateFreshness(dataProductName, data) {
     // Compare data timestamp with current time
     if (data.updated_at) {
@@ -303,49 +320,51 @@ class DataMeshGovernance {
     }
     return 0;
   }
-  
+
   calculateCompleteness(data, schema) {
     const requiredFields = this.getRequiredFields(schema);
-    const presentFields = requiredFields.filter(field => data[field] !== undefined && data[field] !== null);
+    const presentFields = requiredFields.filter(
+      (field) => data[field] !== undefined && data[field] !== null
+    );
     return (presentFields.length / requiredFields.length) * 100;
   }
-  
+
   getRequiredFields(schema) {
     const required = [];
-    
-    const traverse = (obj, path = '') => {
+
+    const traverse = (obj, path = "") => {
       if (obj.required) {
         for (const field of obj.required) {
           required.push(path ? `${path}.${field}` : field);
         }
       }
-      
+
       if (obj.properties) {
         for (const [key, value] of Object.entries(obj.properties)) {
           traverse(value, path ? `${path}.${key}` : key);
         }
       }
     };
-    
+
     traverse(schema);
     return required;
   }
-  
+
   async calculateAccuracy(dataProductName, data) {
     // Cross-validate with source systems
     const product = this.dataProducts.get(dataProductName);
-    
+
     // Example: Validate payment amount matches source
-    if (dataProductName === 'payments-data-product' && data.payment_id) {
+    if (dataProductName === "payments-data-product" && data.payment_id) {
       const sourcePayment = await mysql.query(
         `SELECT amount FROM payments WHERE payment_id = ?`,
         [data.payment_id]
       );
-      
+
       if (sourcePayment.length > 0) {
         const sourceAmount = parseFloat(sourcePayment[0].amount);
         const dataAmount = parseFloat(data.amount);
-        
+
         if (Math.abs(sourceAmount - dataAmount) < 0.01) {
           return 100;
         } else {
@@ -353,94 +372,103 @@ class DataMeshGovernance {
         }
       }
     }
-    
+
     return 100; // Default to 100% if validation not applicable
   }
-  
+
   async trackDataLineage(source, destination, transformation) {
     const lineageRecord = {
-      lineage_id: require('uuid').v4(),
+      lineage_id: require("uuid").v4(),
       source: {
         system: source.system,
         table: source.table,
         record_id: source.record_id,
-        timestamp: new Date()
+        timestamp: new Date(),
       },
       destination: {
         system: destination.system,
         collection: destination.collection,
         document_id: destination.document_id,
-        timestamp: new Date()
+        timestamp: new Date(),
       },
       transformation: transformation,
-      created_at: new Date()
+      created_at: new Date(),
     };
-    
-    await mongodb.collection('data_lineage').insertOne(lineageRecord);
-    
+
+    await mongodb.collection("data_lineage").insertOne(lineageRecord);
+
     return lineageRecord.lineage_id;
   }
-  
+
   async getDataLineage(dataProductName, recordId) {
     // Get upstream lineage
-    const upstream = await mongodb.collection('data_lineage').find({
-      'destination.collection': dataProductName,
-      'destination.document_id': recordId
-    }).toArray();
-    
+    const upstream = await mongodb
+      .collection("data_lineage")
+      .find({
+        "destination.collection": dataProductName,
+        "destination.document_id": recordId,
+      })
+      .toArray();
+
     // Get downstream lineage
-    const downstream = await mongodb.collection('data_lineage').find({
-      'source.table': dataProductName,
-      'source.record_id': recordId
-    }).toArray();
-    
+    const downstream = await mongodb
+      .collection("data_lineage")
+      .find({
+        "source.table": dataProductName,
+        "source.record_id": recordId,
+      })
+      .toArray();
+
     return {
       upstream,
-      downstream
+      downstream,
     };
   }
-  
+
   async alertDataQualityIssue(dataProductName, issues) {
     const alert = {
-      severity: 'warning',
+      severity: "warning",
       data_product: dataProductName,
       issues,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
-    
+
     // Send to monitoring system
-    console.error('[DataMesh] Quality issue detected:', alert);
-    
+    console.error("[DataMesh] Quality issue detected:", alert);
+
     // Store in database
-    await mongodb.collection('data_quality_alerts').insertOne(alert);
+    await mongodb.collection("data_quality_alerts").insertOne(alert);
   }
-  
+
   async checkAccess(userId, dataProductName, permission) {
     const product = this.dataProducts.get(dataProductName);
-    
+
     if (!product) {
       return false;
     }
-    
+
     // Get user roles
     const userRoles = await this.getUserRoles(userId);
-    
+
     // Check if user has required permission
     for (const accessRule of product.spec.access) {
       if (userRoles.includes(accessRule.role)) {
-        if (accessRule.permissions.includes(permission) || accessRule.permissions.includes('admin')) {
+        if (
+          accessRule.permissions.includes(permission) ||
+          accessRule.permissions.includes("admin")
+        ) {
           return true;
         }
       }
     }
-    
+
     return false;
   }
-  
+
   async getUserRoles(userId) {
     // Get user roles from identity provider
     // This is a simplified example
-    const user = await mongodb.collection('users').findOne({ user_id: userId });
+    const user = await mongodb.collection("users").findOne({ user_id: userId });
     return user?.roles || [];
   }
 }
@@ -452,11 +480,11 @@ module.exports = DataMeshGovernance;
 
 ```javascript
 // data-product-api.js
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const DataMeshGovernance = require('./data-mesh-governance');
-const mysql = require('./mysql-client');
-const mongodb = require('./mongodb-client');
+const DataMeshGovernance = require("./data-mesh-governance");
+const mysql = require("./mysql-client");
+const mongodb = require("./mongodb-client");
 
 const governance = new DataMeshGovernance();
 
@@ -464,29 +492,33 @@ const governance = new DataMeshGovernance();
 async function checkAccess(req, res, next) {
   const userId = req.user.id;
   const dataProduct = req.params.dataProduct;
-  const permission = req.method === 'GET' ? 'read' : 'write';
-  
-  const hasAccess = await governance.checkAccess(userId, dataProduct, permission);
-  
+  const permission = req.method === "GET" ? "read" : "write";
+
+  const hasAccess = await governance.checkAccess(
+    userId,
+    dataProduct,
+    permission
+  );
+
   if (!hasAccess) {
-    return res.status(403).json({ error: 'Access denied' });
+    return res.status(403).json({ error: "Access denied" });
   }
-  
+
   next();
 }
 
 // Get data product
-router.get('/:dataProduct/data/:recordId', checkAccess, async (req, res) => {
+router.get("/:dataProduct/data/:recordId", checkAccess, async (req, res) => {
   const { dataProduct, recordId } = req.params;
   const product = governance.dataProducts.get(dataProduct);
-  
+
   if (!product) {
-    return res.status(404).json({ error: 'Data product not found' });
+    return res.status(404).json({ error: "Data product not found" });
   }
-  
+
   // Fetch from appropriate source
   let data;
-  
+
   if (product.spec.sources.mysql) {
     // Fetch from MySQL
     const table = product.spec.sources.mysql.tables[0];
@@ -500,59 +532,66 @@ router.get('/:dataProduct/data/:recordId', checkAccess, async (req, res) => {
     const collection = product.spec.sources.mongodb.collections[0];
     data = await mongodb.collection(collection).findOne({ _id: recordId });
   }
-  
+
   // Validate data contract
   try {
-    await governance.validateDataContract(dataProduct, product.spec.contracts[0].name, data);
+    await governance.validateDataContract(
+      dataProduct,
+      product.spec.contracts[0].name,
+      data
+    );
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
-  
+
   res.json(data);
 });
 
 // Get data lineage
-router.get('/:dataProduct/lineage/:recordId', checkAccess, async (req, res) => {
+router.get("/:dataProduct/lineage/:recordId", checkAccess, async (req, res) => {
   const { dataProduct, recordId } = req.params;
-  
+
   const lineage = await governance.getDataLineage(dataProduct, recordId);
-  
+
   res.json(lineage);
 });
 
 // Search data product
-router.post('/:dataProduct/search', checkAccess, async (req, res) => {
+router.post("/:dataProduct/search", checkAccess, async (req, res) => {
   const { dataProduct } = req.params;
   const { query, filters } = req.body;
-  
+
   const product = governance.dataProducts.get(dataProduct);
-  
+
   if (!product) {
-    return res.status(404).json({ error: 'Data product not found' });
+    return res.status(404).json({ error: "Data product not found" });
   }
-  
+
   // Perform search based on product configuration
   let results;
-  
+
   if (product.spec.sources.mongodb) {
     // Use MongoDB search
     const collection = product.spec.sources.mongodb.collections[0];
-    results = await mongodb.collection(collection).aggregate([
-      {
-        $search: {
-          index: `${dataProduct}_search`,
-          text: {
-            query: query,
-            path: { wildcard: '*' }
-          }
-        }
-      },
-      {
-        $match: filters || {}
-      }
-    ]).toArray();
+    results = await mongodb
+      .collection(collection)
+      .aggregate([
+        {
+          $search: {
+            index: `${dataProduct}_search`,
+            text: {
+              query: query,
+              path: { wildcard: "*" },
+            },
+          },
+        },
+        {
+          $match: filters || {},
+        },
+      ])
+      .toArray();
   }
-  
+
   res.json(results);
 });
 

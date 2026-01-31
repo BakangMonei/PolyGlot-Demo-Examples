@@ -8,18 +8,18 @@
 db.customers.insertOne({
   _id: ObjectId(),
   customer_id: NumberLong(123456789),
-  
+
   // Personal Information (encrypted fields using CSFLE)
   personal_info: {
     name: {
       first: "John",
       middle: "Michael",
-      last: "Doe"
+      last: "Doe",
     },
     email: "john.doe@example.com",
     phone: {
       primary: "+1-555-0123",
-      mobile: "+1-555-0124"
+      mobile: "+1-555-0124",
     },
     // Encrypted fields (handled by CSFLE)
     ssn: BinData(6, "..."), // Encrypted via CSFLE
@@ -31,10 +31,10 @@ db.customers.insertOne({
       city: "New York",
       state: "NY",
       postal_code: "10001",
-      country: "US"
-    }
+      country: "US",
+    },
   },
-  
+
   // Account Summary (denormalized for fast access)
   accounts: [
     {
@@ -46,7 +46,7 @@ db.customers.insertOne({
       currency: "USD",
       status: "ACTIVE",
       opened_date: ISODate("2020-01-15T00:00:00Z"),
-      last_transaction: ISODate("2026-01-31T10:30:00Z")
+      last_transaction: ISODate("2026-01-31T10:30:00Z"),
     },
     {
       account_id: NumberLong(987654322),
@@ -57,10 +57,10 @@ db.customers.insertOne({
       currency: "USD",
       status: "ACTIVE",
       opened_date: ISODate("2020-02-01T00:00:00Z"),
-      last_transaction: ISODate("2026-01-30T15:20:00Z")
-    }
+      last_transaction: ISODate("2026-01-30T15:20:00Z"),
+    },
   ],
-  
+
   // Transaction Summary (reference to time-series collection)
   transactions: {
     collection: "transactions_ts",
@@ -68,9 +68,9 @@ db.customers.insertOne({
     last_90_days_count: 120,
     last_year_count: 450,
     total_lifetime_count: 1250,
-    last_transaction_date: ISODate("2026-01-31T10:30:00Z")
+    last_transaction_date: ISODate("2026-01-31T10:30:00Z"),
   },
-  
+
   // Customer Preferences
   preferences: {
     notification_channels: ["email", "sms", "push"],
@@ -78,26 +78,26 @@ db.customers.insertOne({
     timezone: "America/New_York",
     currency_preference: "USD",
     marketing_opt_in: true,
-    paperless_statements: true
+    paperless_statements: true,
   },
-  
+
   // Risk and Fraud Detection
   risk_score: 0.75,
   risk_factors: [
     {
       factor: "high_transaction_volume",
       score: 0.3,
-      detected_at: ISODate("2026-01-15T00:00:00Z")
+      detected_at: ISODate("2026-01-15T00:00:00Z"),
     },
     {
       factor: "unusual_location",
       score: 0.2,
-      detected_at: ISODate("2026-01-20T00:00:00Z")
-    }
+      detected_at: ISODate("2026-01-20T00:00:00Z"),
+    },
   ],
   fraud_indicators: [],
   fraud_ring_connections: [],
-  
+
   // Behavioral Analytics
   behavior: {
     avg_transaction_amount: NumberDecimal("150.00"),
@@ -105,15 +105,15 @@ db.customers.insertOne({
     preferred_transaction_times: ["09:00", "17:00", "20:00"],
     preferred_merchants: [
       { merchant_id: NumberLong(1001), count: 25 },
-      { merchant_id: NumberLong(1002), count: 18 }
+      { merchant_id: NumberLong(1002), count: 18 },
     ],
     spending_patterns: {
       groceries: NumberDecimal("500.00"),
       utilities: NumberDecimal("200.00"),
-      entertainment: NumberDecimal("300.00")
-    }
+      entertainment: NumberDecimal("300.00"),
+    },
   },
-  
+
   // Product Holdings
   products: {
     credit_cards: [
@@ -122,8 +122,8 @@ db.customers.insertOne({
         card_type: "VISA",
         credit_limit: NumberDecimal("10000.00"),
         available_credit: NumberDecimal("7500.00"),
-        status: "ACTIVE"
-      }
+        status: "ACTIVE",
+      },
     ],
     loans: [
       {
@@ -132,21 +132,21 @@ db.customers.insertOne({
         principal: NumberDecimal("300000.00"),
         remaining_balance: NumberDecimal("250000.00"),
         monthly_payment: NumberDecimal("1500.00"),
-        status: "ACTIVE"
-      }
+        status: "ACTIVE",
+      },
     ],
-    investments: []
+    investments: [],
   },
-  
+
   // Customer Service History
   service_history: {
     total_interactions: 12,
     last_interaction: ISODate("2026-01-25T14:30:00Z"),
     satisfaction_score: 4.5,
     open_tickets: 0,
-    resolved_tickets: 12
+    resolved_tickets: 12,
   },
-  
+
   // Metadata
   metadata: {
     source: "mobile_app",
@@ -155,13 +155,13 @@ db.customers.insertOne({
     last_profile_update: ISODate("2026-01-31T10:30:00Z"),
     profile_completeness: 0.95,
     kyc_status: "VERIFIED",
-    aml_status: "CLEAR"
+    aml_status: "CLEAR",
   },
-  
+
   // Timestamps
   created_at: ISODate("2020-01-15T00:00:00Z"),
   updated_at: ISODate("2026-01-31T10:30:00Z"),
-  version: 1
+  version: 1,
 });
 
 // ============================================================================
@@ -174,9 +174,9 @@ db.createCollection("transactions_ts", {
     timeField: "timestamp",
     metaField: "customer_id",
     granularity: "seconds",
-    bucketMaxSpanSeconds: 3600
+    bucketMaxSpanSeconds: 3600,
   },
-  expireAfterSeconds: 63072000  // 2 years retention
+  expireAfterSeconds: 63072000, // 2 years retention
 });
 
 // Insert sample time-series document
@@ -195,19 +195,19 @@ db.transactions_ts.insertOne({
   fraud_score: 0.1,
   location: {
     type: "Point",
-    coordinates: [-74.006, 40.7128]  // [longitude, latitude]
+    coordinates: [-74.006, 40.7128], // [longitude, latitude]
   },
   device_info: {
     device_id: "device-123",
     device_type: "mobile",
     os: "iOS",
-    app_version: "2.5.1"
+    app_version: "2.5.1",
   },
   metadata: {
     ip_address: "192.168.1.100",
     user_agent: "Mozilla/5.0...",
-    session_id: "session-abc123"
-  }
+    session_id: "session-abc123",
+  },
 });
 
 // ============================================================================
@@ -230,7 +230,7 @@ db.customers.createIndex({ updated_at: -1 });
 db.customers.createIndex({
   "profile.$**": 1,
   "preferences.$**": 1,
-  "metadata.$**": 1
+  "metadata.$**": 1,
 });
 
 // Time-series collection indexes
@@ -238,7 +238,7 @@ db.transactions_ts.createIndex({ customer_id: 1, timestamp: -1 });
 db.transactions_ts.createIndex({ transaction_type: 1, timestamp: -1 });
 db.transactions_ts.createIndex({ status: 1, timestamp: -1 });
 db.transactions_ts.createIndex({ merchant_id: 1, timestamp: -1 });
-db.transactions_ts.createIndex({ "location": "2dsphere" });
+db.transactions_ts.createIndex({ location: "2dsphere" });
 db.transactions_ts.createIndex({ fraud_score: -1, timestamp: -1 });
 
 // ============================================================================
@@ -250,14 +250,14 @@ db.customer_analytics_monthly.insertOne({
   _id: {
     customer_id: NumberLong(123456789),
     year: 2026,
-    month: 1
+    month: 1,
   },
   customer_id: NumberLong(123456789),
   period: {
     year: 2026,
     month: 1,
     start_date: ISODate("2026-01-01T00:00:00Z"),
-    end_date: ISODate("2026-01-31T23:59:59Z")
+    end_date: ISODate("2026-01-31T23:59:59Z"),
   },
   metrics: {
     total_amount: NumberDecimal("6750.00"),
@@ -270,13 +270,13 @@ db.customer_analytics_monthly.insertOne({
       WITHDRAWAL: 10,
       TRANSFER: 20,
       PAYMENT: 8,
-      FEE: 2
+      FEE: 2,
     },
     days_active: 30,
-    avg_daily_transactions: 1.5
+    avg_daily_transactions: 1.5,
   },
   computed_at: ISODate("2026-02-01T00:00:00Z"),
-  version: 1
+  version: 1,
 });
 
 // ============================================================================
@@ -296,8 +296,8 @@ db.transaction_relationships.insertOne({
   fraud_score: 0.1,
   metadata: {
     detected_at: ISODate("2026-01-31T10:30:00Z"),
-    detection_method: "automated"
-  }
+    detection_method: "automated",
+  },
 });
 
 // Indexes for graph queries
@@ -320,46 +320,46 @@ const searchIndexConfig = {
         "personal_info.name.first": {
           type: "autocomplete",
           analyzer: "lucene.standard",
-          searchAnalyzer: "lucene.english"
+          searchAnalyzer: "lucene.english",
         },
         "personal_info.name.last": {
           type: "autocomplete",
           analyzer: "lucene.standard",
-          searchAnalyzer: "lucene.english"
+          searchAnalyzer: "lucene.english",
         },
         "personal_info.email": {
           type: "autocomplete",
-          analyzer: "lucene.email"
+          analyzer: "lucene.email",
         },
         "personal_info.phone.primary": {
           type: "string",
-          analyzer: "lucene.whitespace"
+          analyzer: "lucene.whitespace",
         },
         "accounts.account_type": {
           type: "string",
-          analyzer: "lucene.keyword"
+          analyzer: "lucene.keyword",
         },
         "accounts.account_number": {
           type: "string",
-          analyzer: "lucene.keyword"
+          analyzer: "lucene.keyword",
         },
-        "risk_score": {
-          type: "number"
+        risk_score: {
+          type: "number",
         },
         "behavior.avg_transaction_amount": {
-          type: "number"
+          type: "number",
         },
         "products.credit_cards.card_type": {
           type: "string",
-          analyzer: "lucene.keyword"
+          analyzer: "lucene.keyword",
         },
         "metadata.kyc_status": {
           type: "string",
-          analyzer: "lucene.keyword"
-        }
-      }
-    }
-  }
+          analyzer: "lucene.keyword",
+        },
+      },
+    },
+  },
 };
 
 // ============================================================================
@@ -376,7 +376,7 @@ db.runCommand({
       properties: {
         customer_id: {
           bsonType: "long",
-          description: "must be a long and is required"
+          description: "must be a long and is required",
         },
         personal_info: {
           bsonType: "object",
@@ -387,20 +387,20 @@ db.runCommand({
               required: ["first", "last"],
               properties: {
                 first: { bsonType: "string" },
-                last: { bsonType: "string" }
-              }
+                last: { bsonType: "string" },
+              },
             },
             email: {
               bsonType: "string",
-              pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
-            }
-          }
+              pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
+            },
+          },
         },
         risk_score: {
           bsonType: "double",
           minimum: 0,
           maximum: 1,
-          description: "must be a double between 0 and 1"
+          description: "must be a double between 0 and 1",
         },
         accounts: {
           bsonType: "array",
@@ -410,17 +410,17 @@ db.runCommand({
             properties: {
               account_id: { bsonType: "long" },
               account_type: {
-                enum: ["CHECKING", "SAVINGS", "CREDIT", "LOAN", "INVESTMENT"]
+                enum: ["CHECKING", "SAVINGS", "CREDIT", "LOAN", "INVESTMENT"],
               },
-              balance: { bsonType: "decimal" }
-            }
-          }
-        }
-      }
-    }
+              balance: { bsonType: "decimal" },
+            },
+          },
+        },
+      },
+    },
   },
   validationLevel: "moderate",
-  validationAction: "error"
+  validationAction: "error",
 });
 
 // ============================================================================
@@ -434,33 +434,35 @@ db.customers.findOne({ "personal_info.email": "john.doe@example.com" });
 db.customers.find({ risk_score: { $gte: 0.7 } }).sort({ risk_score: -1 });
 
 // Find transactions for a customer in date range
-db.transactions_ts.find({
-  customer_id: NumberLong(123456789),
-  timestamp: {
-    $gte: ISODate("2026-01-01T00:00:00Z"),
-    $lt: ISODate("2026-02-01T00:00:00Z")
-  }
-}).sort({ timestamp: -1 });
+db.transactions_ts
+  .find({
+    customer_id: NumberLong(123456789),
+    timestamp: {
+      $gte: ISODate("2026-01-01T00:00:00Z"),
+      $lt: ISODate("2026-02-01T00:00:00Z"),
+    },
+  })
+  .sort({ timestamp: -1 });
 
 // Aggregate customer spending by category
 db.transactions_ts.aggregate([
   {
     $match: {
       customer_id: NumberLong(123456789),
-      timestamp: { $gte: ISODate("2026-01-01T00:00:00Z") }
-    }
+      timestamp: { $gte: ISODate("2026-01-01T00:00:00Z") },
+    },
   },
   {
     $group: {
       _id: "$transaction_type",
       total_amount: { $sum: "$amount" },
       count: { $sum: 1 },
-      avg_amount: { $avg: "$amount" }
-    }
+      avg_amount: { $avg: "$amount" },
+    },
   },
   {
-    $sort: { total_amount: -1 }
-  }
+    $sort: { total_amount: -1 },
+  },
 ]);
 
 // Find nearby transactions using geospatial query
@@ -469,10 +471,10 @@ db.transactions_ts.find({
     $near: {
       $geometry: {
         type: "Point",
-        coordinates: [-74.006, 40.7128]
+        coordinates: [-74.006, 40.7128],
       },
-      $maxDistance: 5000  // 5km radius
-    }
+      $maxDistance: 5000, // 5km radius
+    },
   },
-  timestamp: { $gte: ISODate("2026-01-31T00:00:00Z") }
+  timestamp: { $gte: ISODate("2026-01-31T00:00:00Z") },
 });

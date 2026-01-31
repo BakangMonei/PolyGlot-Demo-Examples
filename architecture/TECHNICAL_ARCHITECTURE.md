@@ -1,4 +1,5 @@
 # Technical Architecture Document
+
 ## Hybrid Database System for Global Banking Platform
 
 **Version:** 1.0  
@@ -30,15 +31,15 @@ This architecture delivers a fault-tolerant, regulatory-compliant hybrid databas
 
 ### Key Metrics
 
-| Metric | Target | Current Design |
-|--------|--------|----------------|
-| Customers | 50M+ | ✓ Supported |
-| TPS | 5,000+ | ✓ Supported |
-| P99 Latency | <50ms | ✓ Achieved |
-| Availability | 99.999% | ✓ Designed |
-| RTO | 4 seconds | ✓ Automated |
-| RPO | 0 seconds | ✓ Synchronous |
-| Data Consistency | Absolute | ✓ Saga + CQRS |
+| Metric           | Target    | Current Design |
+| ---------------- | --------- | -------------- |
+| Customers        | 50M+      | ✓ Supported    |
+| TPS              | 5,000+    | ✓ Supported    |
+| P99 Latency      | <50ms     | ✓ Achieved     |
+| Availability     | 99.999%   | ✓ Designed     |
+| RTO              | 4 seconds | ✓ Automated    |
+| RPO              | 0 seconds | ✓ Synchronous  |
+| Data Consistency | Absolute  | ✓ Saga + CQRS  |
 
 ---
 
@@ -89,55 +90,65 @@ This architecture delivers a fault-tolerant, regulatory-compliant hybrid databas
 #### 1. Multi-Source Replication
 
 **Configuration:**
+
 - **Primary Region**: US-East (Primary Master)
 - **Secondary Regions**: EU-West, AP-Southeast (Replica Masters)
 - **Replication Type**: Semi-synchronous replication
 - **Replication Lag Target**: <100ms
 
 **Benefits:**
+
 - Geographic redundancy for disaster recovery
 - Read scaling across regions
 - Zero data loss with semi-sync replication
 
 **Trade-offs:**
+
 - Increased latency for cross-region writes (mitigated by regional write affinity)
 - Higher network costs (justified by RPO=0 requirement)
 
 #### 2. Sharded Architecture (Vitess/ProxySQL)
 
 **Sharding Strategy:**
+
 - **Shard Key**: `customer_id` (hash-based)
 - **Number of Shards**: 256 (configurable, supports 1B+ customers)
 - **Shard Distribution**: Even distribution across MySQL instances
 
 **Shard Management:**
+
 ```sql
 -- Example shard routing logic
 SHARD_ID = HASH(customer_id) % 256
 ```
 
 **Benefits:**
+
 - Horizontal scalability beyond single-instance limits
 - Isolated failure domains per shard
 - Independent scaling per shard
 
 **Trade-offs:**
+
 - Cross-shard queries require application-level aggregation
 - Resharding complexity (mitigated by Vitess resharding tools)
 
 #### 3. InnoDB Cluster with Group Replication
 
 **Topology:**
+
 - **Primary**: 1 node per region (3 total)
 - **Secondaries**: 2 nodes per region (6 total)
 - **Quorum**: 3 nodes minimum for consensus
 
 **Failover:**
+
 - Automatic failover via Group Replication
 - RTO: 4 seconds (measured)
 - Zero data loss with majority quorum
 
 **Configuration:**
+
 ```ini
 [mysqld]
 group_replication_group_name="banking-cluster"
@@ -151,12 +162,13 @@ group_replication_consistency=AFTER
 #### 4. Row-Level Security (RLS) and Dynamic Data Masking
 
 **RLS Implementation:**
+
 ```sql
 CREATE POLICY customer_data_policy ON accounts
   FOR ALL
   USING (
     customer_id IN (
-      SELECT customer_id FROM user_permissions 
+      SELECT customer_id FROM user_permissions
       WHERE user_id = CURRENT_USER()
     )
   );
@@ -166,13 +178,14 @@ ALTER TABLE accounts ENABLE ROW LEVEL SECURITY;
 ```
 
 **Dynamic Data Masking:**
+
 ```sql
 -- Mask SSN for non-privileged users
 CREATE VIEW accounts_masked AS
-SELECT 
+SELECT
   account_id,
   customer_id,
-  CASE 
+  CASE
     WHEN HAS_PRIVILEGE('VIEW_PII') THEN ssn
     ELSE CONCAT('***-**-', RIGHT(ssn, 4))
   END AS ssn,
@@ -183,11 +196,13 @@ FROM accounts;
 #### 5. MySQL HeatWave Integration
 
 **Use Cases:**
+
 - Real-time fraud detection queries
 - Customer behavior analytics
 - Regulatory reporting
 
 **Configuration:**
+
 - HeatWave nodes: 4 nodes (scalable to 32)
 - Auto-scaling based on query load
 - Columnar storage for analytical workloads
@@ -195,6 +210,7 @@ FROM accounts;
 #### 6. Resource Groups with CPU Affinity
 
 **Priority Banking Operations:**
+
 ```sql
 CREATE RESOURCE GROUP critical_operations
   TYPE = USER
@@ -245,7 +261,7 @@ CREATE TABLE branches (
 );
 
 -- Find nearest branches
-SELECT 
+SELECT
   branch_id,
   branch_name,
   ST_Distance_Sphere(location, POINT(-74.006, 40.7128)) AS distance_meters
@@ -266,7 +282,7 @@ CREATE TABLE customer_correspondence (
   customer_id BIGINT,
   subject VARCHAR(500),
   body TEXT,
-  FULLTEXT INDEX idx_fulltext (subject, body) 
+  FULLTEXT INDEX idx_fulltext (subject, body)
     WITH PARSER ngram
 );
 
@@ -284,6 +300,7 @@ WHERE MATCH(subject, body) AGAINST('mortgage payment' IN NATURAL LANGUAGE MODE);
 #### 1. Document Schema Design
 
 **Customer 360° View Schema:**
+
 ```javascript
 {
   _id: ObjectId("..."),
@@ -321,20 +338,22 @@ WHERE MATCH(subject, body) AGAINST('mortgage payment' IN NATURAL LANGUAGE MODE);
 ```
 
 **Embedding vs Referencing Strategy:**
+
 - **Embedded**: Personal info, preferences, risk scores (frequently accessed together)
 - **Referenced**: Transactions (time-series collection), historical data (archived collections)
 
 #### 2. Time-Series Collections
 
 **Configuration:**
+
 ```javascript
 db.createCollection("transactions_ts", {
   timeseries: {
     timeField: "timestamp",
     metaField: "customer_id",
     granularity: "seconds",
-    bucketMaxSpanSeconds: 3600
-  }
+    bucketMaxSpanSeconds: 3600,
+  },
 });
 
 // Indexes
@@ -343,6 +362,7 @@ db.transactions_ts.createIndex({ transaction_type: 1, timestamp: -1 });
 ```
 
 **Benefits:**
+
 - Automatic bucketization reduces storage by 70%
 - Optimized queries for time-range operations
 - Efficient compression for historical data
@@ -352,25 +372,26 @@ db.transactions_ts.createIndex({ transaction_type: 1, timestamp: -1 });
 ```javascript
 const changeStream = db.transactions.watch(
   [
-    { $match: { "operationType": "insert" } },
-    { $project: { "fullDocument": true } }
+    { $match: { operationType: "insert" } },
+    { $project: { fullDocument: true } },
   ],
   {
     fullDocument: "updateLookup",
-    resumeAfter: resumeToken // Resume from last processed event
+    resumeAfter: resumeToken, // Resume from last processed event
   }
 );
 
 changeStream.on("change", (change) => {
   // Process event
   processTransactionEvent(change.fullDocument);
-  
+
   // Store resume token for recovery
   storeResumeToken(change._id);
 });
 ```
 
 **Use Cases:**
+
 - Real-time fraud detection
 - Event-driven microservices
 - CQRS event projection
@@ -386,18 +407,18 @@ db.customers.createSearchIndex({
       fields: {
         "personal_info.name": {
           type: "autocomplete",
-          analyzer: "lucene.standard"
+          analyzer: "lucene.standard",
         },
         "transactions.description": {
           type: "string",
-          analyzer: "lucene.english"
+          analyzer: "lucene.english",
         },
-        "risk_score": {
-          type: "number"
-        }
-      }
-    }
-  }
+        risk_score: {
+          type: "number",
+        },
+      },
+    },
+  },
 });
 
 // Faceted search query
@@ -407,30 +428,31 @@ db.customers.aggregate([
       index: "default",
       text: {
         query: "mortgage payment",
-        path: ["transactions.description"]
+        path: ["transactions.description"],
       },
       facet: {
         operator: "and",
         facets: {
           account_type: {
             type: "string",
-            path: "accounts.account_type"
+            path: "accounts.account_type",
           },
           risk_level: {
             type: "number",
             path: "risk_score",
-            boundaries: [0, 0.3, 0.7, 1.0]
-          }
-        }
-      }
-    }
-  }
+            boundaries: [0, 0.3, 0.7, 1.0],
+          },
+        },
+      },
+    },
+  },
 ]);
 ```
 
 #### 5. Client-Side Field-Level Encryption (CSFLE)
 
 **Configuration:**
+
 ```javascript
 const client = new MongoClient(uri, {
   autoEncryption: {
@@ -438,32 +460,32 @@ const client = new MongoClient(uri, {
     kmsProviders: {
       aws: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
-      }
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      },
     },
     schemaMap: {
       "banking.customers": {
         bsonType: "object",
         encryptMetadata: {
-          keyId: [UUID("...")] // AWS KMS key
+          keyId: [UUID("...")], // AWS KMS key
         },
         properties: {
           "personal_info.ssn": {
             encrypt: {
               bsonType: "string",
-              algorithm: "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic"
-            }
+              algorithm: "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic",
+            },
           },
           "personal_info.date_of_birth": {
             encrypt: {
               bsonType: "date",
-              algorithm: "AEAD_AES_256_CBC_HMAC_SHA_512-Random"
-            }
-          }
-        }
-      }
-    }
-  }
+              algorithm: "AEAD_AES_256_CBC_HMAC_SHA_512-Random",
+            },
+          },
+        },
+      },
+    },
+  },
 });
 ```
 
@@ -473,7 +495,7 @@ const client = new MongoClient(uri, {
 const session = client.startSession();
 session.startTransaction({
   readConcern: { level: "snapshot" },
-  writeConcern: { w: "majority" }
+  writeConcern: { w: "majority" },
 });
 
 try {
@@ -482,16 +504,16 @@ try {
     { $inc: { balance: -1000 } },
     { session }
   );
-  
+
   await transactionsCollection.insertOne(
     {
       customer_id: 123,
       amount: 1000,
-      type: "transfer"
+      type: "transfer",
     },
     { session }
   );
-  
+
   await session.commitTransaction();
 } catch (error) {
   await session.abortTransaction();
@@ -509,8 +531,8 @@ db.transactions.aggregate([
   {
     $match: {
       flagged: true,
-      timestamp: { $gte: ISODate("2026-01-01") }
-    }
+      timestamp: { $gte: ISODate("2026-01-01") },
+    },
   },
   {
     $graphLookup: {
@@ -521,15 +543,15 @@ db.transactions.aggregate([
       as: "connected_transactions",
       maxDepth: 3,
       restrictSearchWithMatch: {
-        flagged: true
-      }
-    }
+        flagged: true,
+      },
+    },
   },
   {
     $match: {
-      $expr: { $gt: [{ $size: "$connected_transactions" }, 5] }
-    }
-  }
+      $expr: { $gt: [{ $size: "$connected_transactions" }, 5] },
+    },
+  },
 ]);
 ```
 
@@ -548,18 +570,24 @@ sh.addShardToZone("shard-us-1", "US");
 sh.addShardToZone("shard-us-2", "US");
 
 // Zone-based sharding
-sh.shardCollection("banking.customers", { customer_id: 1 }, {
-  presplitHashedZones: true
-});
+sh.shardCollection(
+  "banking.customers",
+  { customer_id: 1 },
+  {
+    presplitHashedZones: true,
+  }
+);
 
 // Tag ranges to zones
-sh.updateZoneKeyRange("banking.customers",
+sh.updateZoneKeyRange(
+  "banking.customers",
   { customer_id: MinKey },
   { customer_id: 500000000 },
   "EU"
 );
 
-sh.updateZoneKeyRange("banking.customers",
+sh.updateZoneKeyRange(
+  "banking.customers",
   { customer_id: 500000000 },
   { customer_id: MaxKey },
   "US"
@@ -575,9 +603,9 @@ db.transactions.aggregate([
     $match: {
       timestamp: {
         $gte: ISODate("2026-01-01"),
-        $lt: ISODate("2026-02-01")
-      }
-    }
+        $lt: ISODate("2026-02-01"),
+      },
+    },
   },
   {
     $group: {
@@ -585,16 +613,16 @@ db.transactions.aggregate([
       total_amount: { $sum: "$amount" },
       transaction_count: { $sum: 1 },
       avg_amount: { $avg: "$amount" },
-      last_transaction: { $max: "$timestamp" }
-    }
+      last_transaction: { $max: "$timestamp" },
+    },
   },
   {
     $merge: {
       into: "customer_analytics_monthly",
       whenMatched: "replace",
-      whenNotMatched: "insert"
-    }
-  }
+      whenNotMatched: "insert",
+    },
+  },
 ]);
 ```
 
@@ -604,13 +632,13 @@ db.transactions.aggregate([
 // Create wildcard index for dynamic customer profile attributes
 db.customers.createIndex({
   "profile.*": 1,
-  "preferences.*": 1
+  "preferences.*": 1,
 });
 
 // Query dynamic attributes efficiently
 db.customers.find({
   "profile.custom_field_123": "value",
-  "preferences.notification_email": true
+  "preferences.notification_email": true,
 });
 ```
 
@@ -629,7 +657,7 @@ const sagaEvents = {
   ACCOUNT_DEBITED: "account.debited",
   ACCOUNT_CREDITED: "account.credited",
   TRANSFER_COMPLETED: "transfer.completed",
-  TRANSFER_FAILED: "transfer.failed"
+  TRANSFER_FAILED: "transfer.failed",
 };
 
 // Compensating transaction handlers
@@ -647,27 +675,41 @@ const compensators = {
       "UPDATE accounts SET balance = balance - ? WHERE account_id = ?",
       [event.amount, event.to_account_id]
     );
-  }
+  },
 };
 
 // Saga orchestrator
 class TransferSaga {
   async execute(transferRequest) {
     const sagaId = generateIdempotencyKey();
-    
+
     try {
       // Step 1: Debit source account (MySQL)
-      await this.debitAccount(transferRequest.from_account_id, transferRequest.amount);
-      await this.publishEvent(sagaEvents.ACCOUNT_DEBITED, { sagaId, ...transferRequest });
-      
+      await this.debitAccount(
+        transferRequest.from_account_id,
+        transferRequest.amount
+      );
+      await this.publishEvent(sagaEvents.ACCOUNT_DEBITED, {
+        sagaId,
+        ...transferRequest,
+      });
+
       // Step 2: Credit destination account (MySQL)
-      await this.creditAccount(transferRequest.to_account_id, transferRequest.amount);
-      await this.publishEvent(sagaEvents.ACCOUNT_CREDITED, { sagaId, ...transferRequest });
-      
+      await this.creditAccount(
+        transferRequest.to_account_id,
+        transferRequest.amount
+      );
+      await this.publishEvent(sagaEvents.ACCOUNT_CREDITED, {
+        sagaId,
+        ...transferRequest,
+      });
+
       // Step 3: Update customer view (MongoDB)
-      await this.updateCustomerView(transferRequest.customer_id, transferRequest);
+      await this.updateCustomerView(
+        transferRequest.customer_id,
+        transferRequest
+      );
       await this.publishEvent(sagaEvents.TRANSFER_COMPLETED, { sagaId });
-      
     } catch (error) {
       // Compensate all completed steps
       await this.compensate(sagaId);
@@ -675,7 +717,7 @@ class TransferSaga {
       throw error;
     }
   }
-  
+
   async compensate(sagaId) {
     const events = await this.getSagaEvents(sagaId);
     // Execute compensators in reverse order
@@ -695,13 +737,13 @@ class DeadLetterQueue {
   async handleFailedEvent(event, error, retryCount = 0) {
     const maxRetries = 5;
     const backoffMs = Math.min(1000 * Math.pow(2, retryCount), 30000);
-    
+
     if (retryCount >= maxRetries) {
       await this.storeInDLQ(event, error);
       await this.alertOperations(event, error);
       return;
     }
-    
+
     // Exponential backoff retry
     setTimeout(async () => {
       try {
@@ -752,7 +794,7 @@ CREATE TABLE account_events (
 class AccountProjector {
   async projectEvent(event) {
     const { event_type, event_data } = event;
-    
+
     switch (event_type) {
       case "ACCOUNT_CREATED":
         await this.createAccountView(event_data);
@@ -765,7 +807,7 @@ class AccountProjector {
         break;
     }
   }
-  
+
   async createAccountView(data) {
     await db.customers.updateOne(
       { customer_id: data.customer_id },
@@ -775,9 +817,9 @@ class AccountProjector {
             account_id: data.account_id,
             account_type: data.account_type,
             balance: 0,
-            created_at: new Date()
-          }
-        }
+            created_at: new Date(),
+          },
+        },
       },
       { upsert: true }
     );
@@ -795,18 +837,18 @@ class ConsistencyValidator {
       "SELECT SUM(balance) as total FROM accounts WHERE customer_id = ?",
       [customerId]
     );
-    
+
     // MongoDB query model
     const mongoBalance = await db.customers.aggregate([
       { $match: { customer_id: customerId } },
       { $unwind: "$accounts" },
-      { $group: { _id: null, total: { $sum: "$accounts.balance" } } }
+      { $group: { _id: null, total: { $sum: "$accounts.balance" } } },
     ]);
-    
+
     // Vector clock for ordering
     const mysqlClock = await this.getVectorClock("mysql", customerId);
     const mongoClock = await this.getVectorClock("mongodb", customerId);
-    
+
     // Validate consistency
     if (Math.abs(mysqlBalance.total - mongoBalance[0].total) > 0.01) {
       if (this.isVectorClockConsistent(mysqlClock, mongoClock)) {
@@ -858,36 +900,36 @@ spec:
 class DataMeshGovernance {
   async validateDataContract(dataProduct, data) {
     const contract = await this.getDataContract(dataProduct);
-    
+
     // Validate schema
     const schemaValidation = await this.validateSchema(contract.schema, data);
     if (!schemaValidation.valid) {
       throw new Error(`Schema validation failed: ${schemaValidation.errors}`);
     }
-    
+
     // Validate quality metrics
     const qualityMetrics = await this.calculateQualityMetrics(data);
     if (qualityMetrics.freshness > contract.quality.freshness) {
       await this.alertDataQualityIssue(dataProduct, qualityMetrics);
     }
-    
+
     return { valid: true, qualityMetrics };
   }
-  
+
   async trackDataLineage(source, destination, transformation) {
     await db.data_lineage.insertOne({
       source: {
         system: source.system,
         table: source.table,
-        timestamp: new Date()
+        timestamp: new Date(),
       },
       destination: {
         system: destination.system,
         collection: destination.collection,
-        timestamp: new Date()
+        timestamp: new Date(),
       },
       transformation: transformation,
-      lineage_id: generateId()
+      lineage_id: generateId(),
     });
   }
 }
@@ -900,14 +942,16 @@ class DataMeshGovernance {
 ### Read/Write Workload Patterns
 
 **Hot Path (MongoDB):**
+
 - **Target**: 100K read ops/sec @ <10ms latency
-- **Strategy**: 
+- **Strategy**:
   - Read replicas with 3x replication factor
   - Connection pooling (maxPoolSize: 100)
   - Index optimization for common queries
   - In-memory caching layer (Redis) for frequently accessed data
 
 **Warm Path (MySQL):**
+
 - **Target**: 50K write ops/sec with immediate durability
 - **Strategy**:
   - Write-optimized InnoDB configuration
@@ -916,6 +960,7 @@ class DataMeshGovernance {
   - Write buffer optimization
 
 **Cold Path (HeatWave):**
+
 - **Target**: 1M analytics queries/day
 - **Strategy**:
   - Columnar storage for analytical workloads
@@ -926,6 +971,7 @@ class DataMeshGovernance {
 ### Data Volumes
 
 **MySQL:**
+
 - **Current**: 100TB+ OLTP data
 - **Retention**: 10 years with automated tiering
 - **Tiering Strategy**:
@@ -934,12 +980,14 @@ class DataMeshGovernance {
   - Cold: 2+ years (Object storage with MySQL backup)
 
 **MongoDB:**
+
 - **Current**: 500TB+ document store
 - **Retention**: 7 years with compression
 - **Compression**: WiredTiger snappy compression (70% reduction)
 - **Archival**: Automated archival to cold storage after 2 years
 
 **Indexes:**
+
 - **Target**: 30% of data size
 - **Optimization**: Bloom filters for equality queries
 - **Maintenance**: Weekly index optimization and rebuild
@@ -947,22 +995,26 @@ class DataMeshGovernance {
 ### Availability Requirements
 
 **RTO: 4 seconds**
+
 - Achieved through InnoDB Cluster automatic failover
 - Health checks every 1 second
 - Pre-configured failover targets
 
 **RPO: 0 seconds**
+
 - Synchronous replication ensures zero data loss
 - Semi-synchronous replication with 2+ replicas
 - Continuous backup with point-in-time recovery
 
 **Availability: 99.999%**
+
 - Multi-region deployment (3 regions)
 - Automatic failover
 - Zero-downtime maintenance windows
 - Canary deployments for schema changes
 
 **Zero-Downtime Schema Migrations:**
+
 - Online DDL for MySQL 8.0
 - Blue-green deployments for MongoDB
 - Schema versioning and backward compatibility
@@ -974,6 +1026,7 @@ class DataMeshGovernance {
 ### Layer 1: Data at Rest
 
 **MySQL TDE:**
+
 ```sql
 -- Enable TDE
 INSTALL PLUGIN keyring_file SONAME 'keyring_file.so';
@@ -989,6 +1042,7 @@ ALTER INSTANCE ROTATE INNODB MASTER KEY;
 ```
 
 **MongoDB Encrypted Storage:**
+
 ```javascript
 // WiredTiger encryption at rest
 storage:
@@ -998,6 +1052,7 @@ storage:
 ```
 
 **Backup Encryption:**
+
 - AES-256-GCM encryption for all backups
 - Separate key management system (AWS KMS)
 - Key rotation every 90 days
@@ -1005,6 +1060,7 @@ storage:
 ### Layer 2: Data in Transit
 
 **TLS 1.3 Configuration:**
+
 ```ini
 # MySQL
 [mysqld]
@@ -1024,19 +1080,21 @@ net:
 ```
 
 **Certificate Pinning:**
+
 ```javascript
 const client = new MongoClient(uri, {
   tls: true,
   tlsCertificateKeyFile: "/path/to/client.pem",
   tlsCAFile: "/path/to/ca.pem",
   // Certificate pinning
-  tlsAllowInvalidCertificates: false
+  tlsAllowInvalidCertificates: false,
 });
 ```
 
 ### Layer 3: Access Control
 
 **MySQL RBAC with ABAC:**
+
 ```sql
 -- Create role
 CREATE ROLE 'fraud_analyst';
@@ -1044,7 +1102,7 @@ CREATE ROLE 'fraud_analyst';
 -- Grant permissions with ABAC
 GRANT SELECT ON banking.transactions TO 'fraud_analyst'
   WHERE customer_id IN (
-    SELECT customer_id FROM user_assigned_customers 
+    SELECT customer_id FROM user_assigned_customers
     WHERE user_id = CURRENT_USER()
   );
 
@@ -1053,6 +1111,7 @@ GRANT 'fraud_analyst' TO 'analyst@example.com';
 ```
 
 **MongoDB SCRAM-SHA-256 with LDAP:**
+
 ```javascript
 // LDAP authentication
 security:
@@ -1066,6 +1125,7 @@ security:
 ```
 
 **Just-in-Time Access:**
+
 - Temporary credentials with 15-minute expiration
 - Automated credential rotation
 - Audit logging for all access
@@ -1073,24 +1133,28 @@ security:
 ### Compliance Requirements
 
 **PCI-DSS:**
+
 - Full transaction lifecycle protection
 - Encrypted cardholder data
 - Access logging and monitoring
 - Quarterly security assessments
 
 **SOC 2 Type II:**
+
 - Automated evidence collection
 - Continuous monitoring
 - Access control reviews
 - Incident response procedures
 
 **GDPR/CCPA:**
+
 - Right to erasure with cryptographic shredding
 - Data portability exports
 - Consent management
 - Privacy impact assessments
 
 **FedRAMP:**
+
 - Continuous monitoring and logging
 - Security control implementation
 - Annual assessments
@@ -1103,6 +1167,7 @@ security:
 ### Monitoring Stack
 
 **Metrics (Prometheus + Thanos):**
+
 - Long-term retention: 2 years
 - Retention policy: 15s for 1 day, 1m for 30 days, 5m for 2 years
 - Metrics collected:
@@ -1113,16 +1178,19 @@ security:
   - Transaction throughput
 
 **Logs (OpenTelemetry + Jaeger):**
+
 - Distributed tracing across MySQL and MongoDB
 - Trace sampling: 100% for errors, 1% for successful requests
 - Log aggregation: Centralized logging with 90-day retention
 
 **Alerting (Alertmanager):**
+
 - Multi-channel notifications: Email, PagerDuty, Slack
 - Alert routing based on severity
 - Alert grouping and deduplication
 
 **Dashboards (Grafana):**
+
 - Real-time SLA tracking
 - Database performance metrics
 - Business KPIs
@@ -1131,17 +1199,20 @@ security:
 ### Key Performance Indicators
 
 **Database KPIs:**
+
 - Connection pool utilization: <80%
 - Replication lag: <100ms
 - Cache hit ratio: >95%
 - Query latency P99: <50ms
 
 **Query KPIs:**
+
 - 95th percentile latency: <100ms
 - Execution plan stability: >99%
 - Slow query rate: <0.1%
 
 **Business KPIs:**
+
 - Failed transactions per million: <10
 - Fraud detection accuracy: >99.5%
 - Customer satisfaction: >4.5/5
@@ -1149,21 +1220,25 @@ security:
 ### Data Quality Framework
 
 **Freshness:**
+
 - Maximum 1-second data staleness between systems
 - Monitoring: Continuous freshness checks
 - Alerting: Alert if staleness >1s
 
 **Completeness:**
+
 - 100% of required fields populated
 - Validation: Schema validation on write
 - Reporting: Daily completeness reports
 
 **Accuracy:**
+
 - 99.999% match in cross-database reconciliation
 - Validation: Automated reconciliation jobs
 - Alerting: Alert on mismatch
 
 **Lineage:**
+
 - Full provenance from source to consumption
 - Tracking: Data lineage graph
 - Reporting: Lineage reports for compliance
@@ -1175,6 +1250,7 @@ security:
 ### Scenario 1: Regional Outage
 
 **Action Plan:**
+
 1. Automatic traffic rerouting to secondary region (<10s)
 2. Verify data consistency across regions
 3. Monitor replication lag
@@ -1186,6 +1262,7 @@ security:
 ### Scenario 2: Logical Corruption
 
 **Action Plan:**
+
 1. Identify corruption point using binary logs
 2. Stop replication to prevent spread
 3. Restore from backup to point-in-time before corruption
@@ -1198,6 +1275,7 @@ security:
 ### Scenario 3: Security Breach
 
 **Action Plan:**
+
 1. Immediate isolation of affected systems
 2. Forensic data capture
 3. Golden image restoration
@@ -1206,6 +1284,7 @@ security:
 6. Credential rotation
 
 **Procedure:**
+
 - Isolate: Network segmentation
 - Capture: Full system snapshots
 - Restore: Golden image deployment
@@ -1217,19 +1296,20 @@ security:
 
 ### MySQL vs MongoDB for Specific Use Cases
 
-| Use Case | Choice | Rationale | Trade-off |
-|----------|--------|-----------|-----------|
-| Financial transactions | MySQL | ACID guarantees, strong consistency | Lower flexibility |
-| Customer 360° view | MongoDB | Flexible schema, document model | Eventual consistency |
-| Real-time analytics | MongoDB | Time-series collections, change streams | Higher storage costs |
-| Regulatory reporting | MySQL | SQL queries, audit trails | Complex joins |
-| Fraud detection | MongoDB | Graph queries, flexible queries | Consistency challenges |
+| Use Case               | Choice  | Rationale                               | Trade-off              |
+| ---------------------- | ------- | --------------------------------------- | ---------------------- |
+| Financial transactions | MySQL   | ACID guarantees, strong consistency     | Lower flexibility      |
+| Customer 360° view     | MongoDB | Flexible schema, document model         | Eventual consistency   |
+| Real-time analytics    | MongoDB | Time-series collections, change streams | Higher storage costs   |
+| Regulatory reporting   | MySQL   | SQL queries, audit trails               | Complex joins          |
+| Fraud detection        | MongoDB | Graph queries, flexible queries         | Consistency challenges |
 
 ### Consistency vs Performance
 
 **Trade-off:** Strong consistency (MySQL) vs Eventual consistency (MongoDB)
 
 **Mitigation:**
+
 - Use Saga pattern for cross-database transactions
 - Implement CQRS for read optimization
 - Set consistency boundaries appropriately
@@ -1240,6 +1320,7 @@ security:
 **Trade-off:** Higher costs for better performance
 
 **Mitigation:**
+
 - Reserved instances for predictable workloads (30% savings)
 - Spot instances for non-critical workloads
 - Automated scaling based on demand
@@ -1250,6 +1331,7 @@ security:
 **Trade-off:** More security controls reduce usability
 
 **Mitigation:**
+
 - Just-in-time access for temporary permissions
 - Role-based access with clear documentation
 - Automated security controls where possible
@@ -1260,24 +1342,28 @@ security:
 ## Migration Strategy
 
 ### Phase 1: Foundation (Months 1-3)
+
 - Deploy MySQL InnoDB Cluster
 - Deploy MongoDB replica sets
 - Set up replication and monitoring
 - Implement basic security controls
 
 ### Phase 2: Consistency Patterns (Months 4-6)
+
 - Implement Saga pattern
 - Deploy CQRS projector
 - Set up event bus
 - Configure data mesh governance
 
 ### Phase 3: Optimization (Months 7-9)
+
 - Performance tuning
 - Index optimization
 - Query optimization
 - Capacity planning
 
 ### Phase 4: Advanced Features (Months 10-12)
+
 - ML integration
 - Blockchain anchoring
 - Quantum readiness preparation
@@ -1286,6 +1372,7 @@ security:
 ### Rollback Procedures
 
 Each migration phase includes:
+
 - Pre-migration backups
 - Rollback scripts
 - Validation checkpoints
@@ -1298,6 +1385,7 @@ Each migration phase includes:
 This architecture delivers a production-ready hybrid database system that meets all strategic objectives while maintaining flexibility for future innovation. The combination of MySQL 8.0 and MongoDB 6.0+ provides the optimal balance between transactional consistency and operational agility, enabling the platform to serve 50M+ customers with sub-50ms latency while ensuring regulatory compliance and fault tolerance.
 
 **Next Steps:**
+
 1. Review and approve architecture
 2. Begin Phase 1 deployment
 3. Set up monitoring and alerting
@@ -1307,6 +1395,7 @@ This architecture delivers a production-ready hybrid database system that meets 
 ---
 
 **Document Control:**
+
 - **Version:** 1.0
 - **Last Updated:** January 31, 2026
 - **Next Review:** April 30, 2026

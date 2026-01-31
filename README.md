@@ -7,6 +7,7 @@ This repository contains the complete architecture, implementation, and operatio
 ## Architecture Overview
 
 ### Tier 1: MySQL 8.0 (System of Record)
+
 - Multi-source replication with semi-synchronous replication
 - Vitess/ProxySQL sharding with customer_id-based partitioning
 - InnoDB Cluster with Group Replication
@@ -15,6 +16,7 @@ This repository contains the complete architecture, implementation, and operatio
 - Transparent Data Encryption (TDE)
 
 ### Tier 2: MongoDB 6.0+ (System of Engagement)
+
 - Time-series collections for real-time transaction streaming
 - Change streams with resume tokens
 - Client-side field-level encryption (CSFLE)

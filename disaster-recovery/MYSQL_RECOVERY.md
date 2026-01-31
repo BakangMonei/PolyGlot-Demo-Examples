@@ -7,6 +7,7 @@ This runbook provides step-by-step procedures for recovering MySQL databases fro
 ## Scenario 1: Regional Outage
 
 ### Symptoms
+
 - Primary region (US-East) is unreachable
 - Application cannot connect to MySQL
 - Health checks failing
@@ -14,6 +15,7 @@ This runbook provides step-by-step procedures for recovering MySQL databases fro
 ### Recovery Procedure
 
 #### Step 1: Verify Outage
+
 ```bash
 # Check primary region connectivity
 ping mysql-primary-us-east.banking.com
@@ -26,6 +28,7 @@ tail -f /var/log/app/error.log
 ```
 
 #### Step 2: Failover to Secondary Region
+
 ```sql
 -- On EU-West secondary
 -- Promote to primary
@@ -39,6 +42,7 @@ SELECT * FROM performance_schema.replication_group_members;
 ```
 
 #### Step 3: Update DNS/ProxySQL
+
 ```bash
 # Update ProxySQL configuration
 mysql -u admin -padmin -h proxysql -P 6032 <<EOF
@@ -52,9 +56,10 @@ EOF
 ```
 
 #### Step 4: Verify Data Consistency
+
 ```sql
 -- Check replication lag
-SELECT 
+SELECT
   CHANNEL_NAME,
   SECONDS_BEHIND_MASTER
 FROM performance_schema.replication_connection_status;
@@ -65,6 +70,7 @@ SELECT MAX(transaction_id) FROM transactions;
 ```
 
 #### Step 5: Monitor and Document
+
 - Document failover time
 - Monitor application performance
 - Verify all services are operational
@@ -77,6 +83,7 @@ SELECT MAX(transaction_id) FROM transactions;
 ## Scenario 2: Logical Corruption
 
 ### Symptoms
+
 - Data inconsistencies detected
 - Application errors related to data
 - Integrity checks failing
@@ -84,6 +91,7 @@ SELECT MAX(transaction_id) FROM transactions;
 ### Recovery Procedure
 
 #### Step 1: Identify Corruption Point
+
 ```sql
 -- Check binary logs for corruption
 SHOW BINARY LOGS;
@@ -96,6 +104,7 @@ CHECK TABLE accounts, transactions, customers;
 ```
 
 #### Step 2: Stop Replication
+
 ```sql
 -- Stop replication to prevent spread
 STOP SLAVE;
@@ -103,6 +112,7 @@ STOP GROUP_REPLICATION;
 ```
 
 #### Step 3: Restore from Backup
+
 ```bash
 # Identify backup before corruption
 ls -lth /backups/mysql/
@@ -115,6 +125,7 @@ mysql -u root -p banking < /backups/mysql/accounts-backup.sql
 ```
 
 #### Step 4: Replay Binary Logs
+
 ```bash
 # Replay binary logs up to corruption point
 mysqlbinlog \
@@ -124,6 +135,7 @@ mysqlbinlog \
 ```
 
 #### Step 5: Verify Data Integrity
+
 ```sql
 -- Run integrity checks
 CHECK TABLE accounts, transactions, customers;
@@ -136,6 +148,7 @@ SELECT COUNT(*) FROM transactions;
 ```
 
 #### Step 6: Resume Replication
+
 ```sql
 -- Resume replication
 START GROUP_REPLICATION;
@@ -152,6 +165,7 @@ SELECT SECONDS_BEHIND_MASTER FROM performance_schema.replication_connection_stat
 ## Scenario 3: Security Breach
 
 ### Symptoms
+
 - Unauthorized access detected
 - Suspicious queries in audit logs
 - Data exfiltration alerts
@@ -159,6 +173,7 @@ SELECT SECONDS_BEHIND_MASTER FROM performance_schema.replication_connection_stat
 ### Recovery Procedure
 
 #### Step 1: Immediate Isolation
+
 ```bash
 # Isolate affected systems
 iptables -A INPUT -s <suspicious_ip> -j DROP
@@ -171,6 +186,7 @@ EOF
 ```
 
 #### Step 2: Forensic Data Capture
+
 ```bash
 # Capture system state
 ps aux > /forensics/process-list-$(date +%Y%m%d-%H%M%S).txt
@@ -184,6 +200,7 @@ cp /var/lib/mysql/mysql-bin.* /forensics/
 ```
 
 #### Step 3: Golden Image Restoration
+
 ```bash
 # Stop MySQL
 systemctl stop mysql
@@ -199,9 +216,10 @@ systemctl start mysql
 ```
 
 #### Step 4: Audit Trail Preservation
+
 ```sql
 -- Export audit logs
-SELECT * FROM audit_log 
+SELECT * FROM audit_log
 WHERE created_at >= '2026-01-30 00:00:00'
 INTO OUTFILE '/forensics/audit-log-export.csv'
 FIELDS TERMINATED BY ',' ENCLOSED BY '"'
@@ -209,6 +227,7 @@ LINES TERMINATED BY '\n';
 ```
 
 #### Step 5: Credential Rotation
+
 ```bash
 # Rotate all database passwords
 mysql -u root -p <<EOF
@@ -222,6 +241,7 @@ EOF
 ```
 
 #### Step 6: Security Patch Deployment
+
 ```bash
 # Apply security patches
 apt-get update
@@ -232,6 +252,7 @@ mysql --version
 ```
 
 #### Step 7: Post-Incident Review
+
 - Document incident timeline
 - Identify root cause
 - Implement preventive measures
@@ -245,6 +266,7 @@ mysql --version
 ## Scenario 4: Disk Failure
 
 ### Symptoms
+
 - Disk I/O errors in logs
 - Database crashes
 - Data directory corruption
@@ -252,6 +274,7 @@ mysql --version
 ### Recovery Procedure
 
 #### Step 1: Assess Damage
+
 ```bash
 # Check disk health
 smartctl -a /dev/sdb
@@ -264,11 +287,13 @@ tail -100 /var/log/mysql/error.log
 ```
 
 #### Step 2: Stop MySQL
+
 ```bash
 systemctl stop mysql
 ```
 
 #### Step 3: Replace Failed Disk
+
 ```bash
 # If using RAID, rebuild array
 mdadm --manage /dev/md0 --add /dev/sdc
@@ -279,6 +304,7 @@ mount /dev/sdc /mnt/new-disk
 ```
 
 #### Step 4: Restore from Backup
+
 ```bash
 # Restore data directory
 rsync -av /backups/mysql/data/ /var/lib/mysql/
@@ -288,6 +314,7 @@ rsync -av /backups/mysql/binlogs/ /var/lib/mysql/
 ```
 
 #### Step 5: Verify and Start
+
 ```bash
 # Verify data integrity
 mysqlcheck --all-databases --check
@@ -362,16 +389,17 @@ FLUSH LOGS;
 
 ### Recovery Time Objectives (RTO)
 
-| Scenario | RTO | RPO |
-|----------|-----|-----|
-| Regional Outage | 60s | 0s |
-| Logical Corruption | 15m | 5m |
-| Security Breach | 2h | 0s |
-| Disk Failure | 30m | 0s |
+| Scenario           | RTO | RPO |
+| ------------------ | --- | --- |
+| Regional Outage    | 60s | 0s  |
+| Logical Corruption | 15m | 5m  |
+| Security Breach    | 2h  | 0s  |
+| Disk Failure       | 30m | 0s  |
 
 ## Monitoring and Alerts
 
 ### Key Metrics
+
 - Backup success/failure
 - Backup size and duration
 - Replication lag
@@ -379,6 +407,7 @@ FLUSH LOGS;
 - Binary log size
 
 ### Alerts
+
 - Backup failure
 - Replication lag > 5 seconds
 - Disk space < 20%

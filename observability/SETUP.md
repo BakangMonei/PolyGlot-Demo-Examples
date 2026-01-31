@@ -1,4 +1,5 @@
 # Observability Stack Setup
+
 ## Prometheus, OpenTelemetry, Grafana Configuration
 
 ## Overview
@@ -46,15 +47,15 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
   external_labels:
-    cluster: 'banking-production'
-    region: 'us-east-1'
+    cluster: "banking-production"
+    region: "us-east-1"
 
 # Alertmanager configuration
 alerting:
   alertmanagers:
     - static_configs:
         - targets:
-          - alertmanager:9093
+            - alertmanager:9093
 
 # Rule files
 rule_files:
@@ -63,17 +64,17 @@ rule_files:
 # Scrape configurations
 scrape_configs:
   # Prometheus itself
-  - job_name: 'prometheus'
+  - job_name: "prometheus"
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ["localhost:9090"]
 
   # MySQL exporters
-  - job_name: 'mysql'
+  - job_name: "mysql"
     static_configs:
       - targets:
-        - 'mysql-node1:9104'
-        - 'mysql-node2:9104'
-        - 'mysql-node3:9104'
+          - "mysql-node1:9104"
+          - "mysql-node2:9104"
+          - "mysql-node3:9104"
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance
@@ -82,24 +83,24 @@ scrape_configs:
         target_label: node
 
   # MongoDB exporters
-  - job_name: 'mongodb'
+  - job_name: "mongodb"
     static_configs:
       - targets:
-        - 'mongodb-node1:9216'
-        - 'mongodb-node2:9216'
-        - 'mongodb-node3:9216'
+          - "mongodb-node1:9216"
+          - "mongodb-node2:9216"
+          - "mongodb-node3:9216"
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance
 
   # Application metrics
-  - job_name: 'banking-app'
+  - job_name: "banking-app"
     static_configs:
       - targets:
-        - 'app1:8080'
-        - 'app2:8080'
-        - 'app3:8080'
-    metrics_path: '/metrics'
+          - "app1:8080"
+          - "app2:8080"
+          - "app3:8080"
+    metrics_path: "/metrics"
 ```
 
 ### MySQL Exporter Setup
@@ -180,7 +181,7 @@ config:
       endpoint: s3.amazonaws.com
       access_key: ${AWS_ACCESS_KEY_ID}
       secret_key: ${AWS_SECRET_ACCESS_KEY}
-  retention: 730d  # 2 years
+  retention: 730d # 2 years
 ```
 
 ## Alertmanager Setup
@@ -200,40 +201,40 @@ sudo cp alertmanager-0.26.0.linux-amd64/alertmanager /usr/local/bin/
 # alertmanager.yml
 global:
   resolve_timeout: 5m
-  slack_api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+  slack_api_url: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
 
 route:
-  group_by: ['alertname', 'cluster', 'service']
+  group_by: ["alertname", "cluster", "service"]
   group_wait: 10s
   group_interval: 10s
   repeat_interval: 12h
-  receiver: 'default'
+  receiver: "default"
   routes:
     - match:
         severity: critical
-      receiver: 'pagerduty'
+      receiver: "pagerduty"
       continue: true
     - match:
         severity: warning
-      receiver: 'slack'
+      receiver: "slack"
 
 receivers:
-  - name: 'default'
+  - name: "default"
     email_configs:
-      - to: 'oncall@banking.com'
+      - to: "oncall@banking.com"
         headers:
-          Subject: 'Database Alert: {{ .GroupLabels.alertname }}'
+          Subject: "Database Alert: {{ .GroupLabels.alertname }}"
 
-  - name: 'pagerduty'
+  - name: "pagerduty"
     pagerduty_configs:
-      - service_key: '${PAGERDUTY_SERVICE_KEY}'
-        description: '{{ .GroupLabels.alertname }}'
+      - service_key: "${PAGERDUTY_SERVICE_KEY}"
+        description: "{{ .GroupLabels.alertname }}"
 
-  - name: 'slack'
+  - name: "slack"
     slack_configs:
-      - channel: '#database-alerts'
-        title: 'Database Alert'
-        text: '{{ .GroupLabels.alertname }}: {{ .Annotations.summary }}'
+      - channel: "#database-alerts"
+        title: "Database Alert"
+        text: "{{ .GroupLabels.alertname }}: {{ .Annotations.summary }}"
 ```
 
 ### Alert Rules

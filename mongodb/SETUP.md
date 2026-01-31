@@ -131,9 +131,9 @@ db.createCollection("transactions_ts", {
     metaField: "customer_id",
     granularity: "seconds",
     bucketMaxSpanSeconds: 3600,
-    bucketRoundingSeconds: 60
+    bucketRoundingSeconds: 60,
   },
-  expireAfterSeconds: 63072000  // 2 years retention
+  expireAfterSeconds: 63072000, // 2 years retention
 });
 
 // Create indexes
@@ -151,12 +151,10 @@ db.transactions_ts.createIndex({ merchant_id: 1, timestamp: -1 });
 
 // Example: Watch transactions collection
 const changeStream = db.transactions.watch(
-  [
-    { $match: { "operationType": { $in: ["insert", "update"] } } }
-  ],
+  [{ $match: { operationType: { $in: ["insert", "update"] } } }],
   {
     fullDocument: "updateLookup",
-    resumeAfter: null  // Set resume token for recovery
+    resumeAfter: null, // Set resume token for recovery
   }
 );
 
@@ -177,29 +175,29 @@ const encryptionSchema = {
   "banking.customers": {
     bsonType: "object",
     encryptMetadata: {
-      keyId: [UUID("your-aws-kms-key-id")]
+      keyId: [UUID("your-aws-kms-key-id")],
     },
     properties: {
       "personal_info.ssn": {
         encrypt: {
           bsonType: "string",
-          algorithm: "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic"
-        }
+          algorithm: "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic",
+        },
       },
       "personal_info.date_of_birth": {
         encrypt: {
           bsonType: "date",
-          algorithm: "AEAD_AES_256_CBC_HMAC_SHA_512-Random"
-        }
+          algorithm: "AEAD_AES_256_CBC_HMAC_SHA_512-Random",
+        },
       },
       "personal_info.account_number": {
         encrypt: {
           bsonType: "string",
-          algorithm: "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic"
-        }
-      }
-    }
-  }
+          algorithm: "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic",
+        },
+      },
+    },
+  },
 };
 
 // Connect with encryption
@@ -210,11 +208,11 @@ const client = new MongoClient(uri, {
       aws: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-        sessionToken: process.env.AWS_SESSION_TOKEN  // Optional
-      }
+        sessionToken: process.env.AWS_SESSION_TOKEN, // Optional
+      },
     },
-    schemaMap: encryptionSchema
-  }
+    schemaMap: encryptionSchema,
+  },
 });
 ```
 
@@ -225,9 +223,13 @@ const client = new MongoClient(uri, {
 sh.enableSharding("banking");
 
 // Create sharded collection with zone sharding
-sh.shardCollection("banking.customers", { customer_id: 1 }, {
-  presplitHashedZones: true
-});
+sh.shardCollection(
+  "banking.customers",
+  { customer_id: 1 },
+  {
+    presplitHashedZones: true,
+  }
+);
 
 // Create zones for data sovereignty
 sh.addShardToZone("shard-eu-1", "EU");
@@ -236,13 +238,15 @@ sh.addShardToZone("shard-us-1", "US");
 sh.addShardToZone("shard-us-2", "US");
 
 // Tag ranges to zones
-sh.updateZoneKeyRange("banking.customers",
+sh.updateZoneKeyRange(
+  "banking.customers",
   { customer_id: MinKey },
   { customer_id: 500000000 },
   "EU"
 );
 
-sh.updateZoneKeyRange("banking.customers",
+sh.updateZoneKeyRange(
+  "banking.customers",
   { customer_id: 500000000 },
   { customer_id: MaxKey },
   "US"
@@ -265,26 +269,26 @@ db.customers.createSearchIndex({
         "personal_info.name": {
           type: "autocomplete",
           analyzer: "lucene.standard",
-          searchAnalyzer: "lucene.english"
+          searchAnalyzer: "lucene.english",
         },
         "personal_info.email": {
           type: "autocomplete",
-          analyzer: "lucene.email"
+          analyzer: "lucene.email",
         },
         "accounts.account_type": {
           type: "string",
-          analyzer: "lucene.keyword"
+          analyzer: "lucene.keyword",
         },
-        "risk_score": {
-          type: "number"
+        risk_score: {
+          type: "number",
         },
         "transactions.description": {
           type: "string",
-          analyzer: "lucene.english"
-        }
-      }
-    }
-  }
+          analyzer: "lucene.english",
+        },
+      },
+    },
+  },
 });
 
 // Faceted search query
@@ -294,24 +298,24 @@ db.customers.aggregate([
       index: "customer_search",
       text: {
         query: "john doe",
-        path: ["personal_info.name", "personal_info.email"]
+        path: ["personal_info.name", "personal_info.email"],
       },
       facet: {
         operator: "and",
         facets: {
           accountTypes: {
             type: "string",
-            path: "accounts.account_type"
+            path: "accounts.account_type",
           },
           riskLevels: {
             type: "number",
             path: "risk_score",
-            boundaries: [0, 0.3, 0.7, 1.0]
-          }
-        }
-      }
-    }
-  }
+            boundaries: [0, 0.3, 0.7, 1.0],
+          },
+        },
+      },
+    },
+  },
 ]);
 ```
 
@@ -327,26 +331,26 @@ const session = client.startSession();
 try {
   session.startTransaction({
     readConcern: { level: "snapshot" },
-    writeConcern: { w: "majority", wtimeout: 5000 }
+    writeConcern: { w: "majority", wtimeout: 5000 },
   });
-  
+
   // Update customer in shard 1
   await customersCollection.updateOne(
     { customer_id: 123 },
     { $inc: { total_transactions: 1 } },
     { session }
   );
-  
+
   // Insert transaction in shard 2
   await transactionsCollection.insertOne(
     {
       customer_id: 123,
       amount: 1000,
-      timestamp: new Date()
+      timestamp: new Date(),
     },
     { session }
   );
-  
+
   // Commit transaction
   await session.commitTransaction();
 } catch (error) {
@@ -370,8 +374,8 @@ db.transactions.aggregate([
   {
     $match: {
       flagged: true,
-      timestamp: { $gte: new Date("2026-01-01") }
-    }
+      timestamp: { $gte: new Date("2026-01-01") },
+    },
   },
   {
     $graphLookup: {
@@ -383,30 +387,30 @@ db.transactions.aggregate([
       maxDepth: 3,
       restrictSearchWithMatch: {
         flagged: true,
-        timestamp: { $gte: new Date("2026-01-01") }
-      }
-    }
+        timestamp: { $gte: new Date("2026-01-01") },
+      },
+    },
   },
   {
     $match: {
-      $expr: { $gt: [{ $size: "$connected_transactions" }, 5] }
-    }
+      $expr: { $gt: [{ $size: "$connected_transactions" }, 5] },
+    },
   },
   {
     $group: {
       _id: "$customer_id",
       fraud_ring_size: { $sum: 1 },
       connected_customers: {
-        $addToSet: "$connected_transactions.customer_id"
+        $addToSet: "$connected_transactions.customer_id",
       },
-      total_suspicious_amount: { $sum: "$amount" }
-    }
+      total_suspicious_amount: { $sum: "$amount" },
+    },
   },
   {
     $match: {
-      fraud_ring_size: { $gte: 5 }
-    }
-  }
+      fraud_ring_size: { $gte: 5 },
+    },
+  },
 ]);
 ```
 
@@ -419,10 +423,10 @@ db.transactions.aggregate([
     $match: {
       timestamp: {
         $gte: new Date("2026-01-01"),
-        $lt: new Date("2026-02-01")
+        $lt: new Date("2026-02-01"),
       },
-      status: "COMPLETED"
-    }
+      status: "COMPLETED",
+    },
   },
   {
     $group: {
@@ -433,16 +437,16 @@ db.transactions.aggregate([
       min_amount: { $min: "$amount" },
       max_amount: { $max: "$amount" },
       last_transaction: { $max: "$timestamp" },
-      transaction_types: { $addToSet: "$transaction_type" }
-    }
+      transaction_types: { $addToSet: "$transaction_type" },
+    },
   },
   {
     $merge: {
       into: "customer_analytics_monthly",
       whenMatched: "replace",
-      whenNotMatched: "insert"
-    }
-  }
+      whenNotMatched: "insert",
+    },
+  },
 ]);
 
 // Schedule this aggregation to run every hour
@@ -455,14 +459,14 @@ db.transactions.aggregate([
 db.customers.createIndex({
   "profile.$**": 1,
   "preferences.$**": 1,
-  "metadata.$**": 1
+  "metadata.$**": 1,
 });
 
 // Query dynamic attributes efficiently
 db.customers.find({
   "profile.custom_field_123": "value",
   "preferences.notification_email": true,
-  "metadata.source": "mobile_app"
+  "metadata.source": "mobile_app",
 });
 ```
 
@@ -527,18 +531,25 @@ for (let i = 0; i < 1000; i++) {
     amount: Math.random() * 1000,
     transaction_type: "TRANSFER",
     timestamp: new Date(),
-    status: "COMPLETED"
+    status: "COMPLETED",
   });
 }
 const duration = Date.now() - start;
-print(`Inserted 1000 documents in ${duration}ms (${1000/duration*1000} ops/sec)`);
+print(
+  `Inserted 1000 documents in ${duration}ms (${
+    (1000 / duration) * 1000
+  } ops/sec)`
+);
 
 // Test read performance
 const readStart = Date.now();
-db.transactions_ts.find({
-  customer_id: 123456,
-  timestamp: { $gte: new Date("2026-01-01") }
-}).limit(100).toArray();
+db.transactions_ts
+  .find({
+    customer_id: 123456,
+    timestamp: { $gte: new Date("2026-01-01") },
+  })
+  .limit(100)
+  .toArray();
 const readDuration = Date.now() - readStart;
 print(`Read query completed in ${readDuration}ms`);
 ```
@@ -576,7 +587,7 @@ db.customers.getShardDistribution();
 
 ```javascript
 // Check slow operations
-db.currentOp({ "active": true, "secs_running": { "$gt": 1 } });
+db.currentOp({ active: true, secs_running: { $gt: 1 } });
 
 // Check index usage
 db.customers.aggregate([{ $indexStats: {} }]);

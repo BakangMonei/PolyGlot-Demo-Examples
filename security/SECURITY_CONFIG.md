@@ -1,4 +1,5 @@
 # Security and Compliance Configuration
+
 ## Multi-Layer Security Architecture
 
 ## Overview
@@ -107,26 +108,23 @@ net:
 
 ```javascript
 // certificate-pinning.js
-const tls = require('tls');
-const crypto = require('crypto');
+const tls = require("tls");
+const crypto = require("crypto");
 
 const PINNED_CERTIFICATES = {
-  'mysql.banking.com': 'sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
-  'mongodb.banking.com': 'sha256/BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB='
+  "mysql.banking.com": "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+  "mongodb.banking.com": "sha256/BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",
 };
 
 function verifyCertificate(hostname, cert) {
-  const fingerprint = crypto
-    .createHash('sha256')
-    .update(cert)
-    .digest('base64');
-  
+  const fingerprint = crypto.createHash("sha256").update(cert).digest("base64");
+
   const pinned = PINNED_CERTIFICATES[hostname];
-  
+
   if (pinned && fingerprint !== pinned) {
     throw new Error(`Certificate pinning failed for ${hostname}`);
   }
-  
+
   return true;
 }
 ```
@@ -146,7 +144,7 @@ CREATE ROLE 'data_analyst';
 CREATE POLICY fraud_analyst_policy ON transactions
   FOR SELECT
   USING (
-    fraud_score > 0.7 OR 
+    fraud_score > 0.7 OR
     status = 'FLAGGED' OR
     customer_id IN (
       SELECT customer_id FROM flagged_customers
@@ -158,7 +156,7 @@ CREATE POLICY customer_service_policy ON accounts
   FOR ALL
   USING (
     customer_id IN (
-      SELECT customer_id FROM user_assigned_customers 
+      SELECT customer_id FROM user_assigned_customers
       WHERE user_id = CURRENT_USER()
     )
   );
@@ -207,58 +205,60 @@ db.grantRolesToUser("analyst@banking.com", ["fraudAnalyst"])
 
 ```javascript
 // jit-access.js
-const mongodb = require('./mongodb-client');
-const mysql = require('./mysql-client');
+const mongodb = require("./mongodb-client");
+const mysql = require("./mysql-client");
 
 class JustInTimeAccess {
   constructor() {
     this.accessDuration = 15 * 60 * 1000; // 15 minutes
   }
-  
+
   async grantTemporaryAccess(userId, resource, permission) {
-    const accessToken = require('crypto').randomBytes(32).toString('hex');
+    const accessToken = require("crypto").randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + this.accessDuration);
-    
+
     // Store access grant
-    await mongodb.collection('jit_access_grants').insertOne({
+    await mongodb.collection("jit_access_grants").insertOne({
       access_token: accessToken,
       user_id: userId,
       resource,
       permission,
       granted_at: new Date(),
       expires_at: expiresAt,
-      status: 'ACTIVE'
+      status: "ACTIVE",
     });
-    
+
     // Schedule revocation
     setTimeout(async () => {
       await this.revokeAccess(accessToken);
     }, this.accessDuration);
-    
+
     return accessToken;
   }
-  
+
   async validateAccess(accessToken, resource, permission) {
-    const grant = await mongodb.collection('jit_access_grants').findOne({
+    const grant = await mongodb.collection("jit_access_grants").findOne({
       access_token: accessToken,
       resource,
       permission,
-      status: 'ACTIVE',
-      expires_at: { $gt: new Date() }
+      status: "ACTIVE",
+      expires_at: { $gt: new Date() },
     });
-    
+
     if (!grant) {
-      throw new Error('Access denied or expired');
+      throw new Error("Access denied or expired");
     }
-    
+
     return grant;
   }
-  
+
   async revokeAccess(accessToken) {
-    await mongodb.collection('jit_access_grants').updateOne(
-      { access_token: accessToken },
-      { $set: { status: 'REVOKED', revoked_at: new Date() } }
-    );
+    await mongodb
+      .collection("jit_access_grants")
+      .updateOne(
+        { access_token: accessToken },
+        { $set: { status: "REVOKED", revoked_at: new Date() } }
+      );
   }
 }
 
@@ -301,17 +301,18 @@ CREATE TABLE pci_audit_log (
 
 ```javascript
 // gdpr-erasure.js
-const mysql = require('./mysql-client');
-const mongodb = require('./mongodb-client');
-const crypto = require('crypto');
+const mysql = require("./mysql-client");
+const mongodb = require("./mongodb-client");
+const crypto = require("crypto");
 
 class GDPRErasure {
   async eraseCustomerData(customerId) {
     // Cryptographic shredding: Replace with hash
-    const erasureHash = crypto.createHash('sha256')
+    const erasureHash = crypto
+      .createHash("sha256")
       .update(`${customerId}-${Date.now()}`)
-      .digest('hex');
-    
+      .digest("hex");
+
     // Erase from MySQL
     await mysql.query(
       `UPDATE customers 
@@ -321,48 +322,54 @@ class GDPRErasure {
            ssn_hash = ?,
            status = 'ERASED'
        WHERE customer_id = ?`,
-      ['ERASED', 'ERASED', `erased-${erasureHash}@erased.com`, erasureHash, customerId]
+      [
+        "ERASED",
+        "ERASED",
+        `erased-${erasureHash}@erased.com`,
+        erasureHash,
+        customerId,
+      ]
     );
-    
+
     // Erase from MongoDB
-    await mongodb.collection('customers').updateOne(
+    await mongodb.collection("customers").updateOne(
       { customer_id: customerId },
       {
         $set: {
-          'personal_info.name.first': 'ERASED',
-          'personal_info.name.last': 'ERASED',
-          'personal_info.email': `erased-${erasureHash}@erased.com`,
-          'personal_info.ssn': null,
-          'status': 'ERASED',
-          'erased_at': new Date()
-        }
+          "personal_info.name.first": "ERASED",
+          "personal_info.name.last": "ERASED",
+          "personal_info.email": `erased-${erasureHash}@erased.com`,
+          "personal_info.ssn": null,
+          status: "ERASED",
+          erased_at: new Date(),
+        },
       }
     );
-    
+
     // Log erasure
-    await mongodb.collection('gdpr_erasure_log').insertOne({
+    await mongodb.collection("gdpr_erasure_log").insertOne({
       customer_id: customerId,
       erasure_hash: erasureHash,
       erased_at: new Date(),
-      requested_by: 'system'
+      requested_by: "system",
     });
   }
-  
+
   async exportCustomerData(customerId) {
     // GDPR/CCPA: Right to data portability
     const mysqlData = await mysql.query(
       `SELECT * FROM customers WHERE customer_id = ?`,
       [customerId]
     );
-    
-    const mongoData = await mongodb.collection('customers').findOne(
-      { customer_id: customerId }
-    );
-    
+
+    const mongoData = await mongodb
+      .collection("customers")
+      .findOne({ customer_id: customerId });
+
     return {
       mysql: mysqlData[0],
       mongodb: mongoData,
-      exported_at: new Date()
+      exported_at: new Date(),
     };
   }
 }
@@ -374,8 +381,8 @@ module.exports = GDPRErasure;
 
 ```javascript
 // soc2-evidence.js
-const mongodb = require('./mongodb-client');
-const mysql = require('./mysql-client');
+const mongodb = require("./mongodb-client");
+const mysql = require("./mysql-client");
 
 class SOC2Evidence {
   async collectAccessControlEvidence() {
@@ -386,15 +393,15 @@ class SOC2Evidence {
        WHERE timestamp >= DATE_SUB(NOW(), INTERVAL 1 DAY)
        ORDER BY timestamp DESC`
     );
-    
+
     return {
-      type: 'access_control',
-      period: 'daily',
+      type: "access_control",
+      period: "daily",
       records: accessLogs,
-      collected_at: new Date()
+      collected_at: new Date(),
     };
   }
-  
+
   async collectEncryptionEvidence() {
     // Verify encryption is enabled
     const mysqlEncryption = await mysql.query(
@@ -402,55 +409,58 @@ class SOC2Evidence {
        FROM information_schema.TABLES 
        WHERE CREATE_OPTIONS LIKE '%ENCRYPTION%'`
     );
-    
+
     const mongoEncryption = await mongodb.admin().command({
       getParameter: 1,
-      encryptionOptions: 1
+      encryptionOptions: 1,
     });
-    
+
     return {
-      type: 'encryption',
+      type: "encryption",
       mysql: {
         encrypted_tables: mysqlEncryption.length,
-        tables: mysqlEncryption
+        tables: mysqlEncryption,
       },
       mongodb: {
-        encryption_enabled: mongoEncryption.encryptionOptions !== null
+        encryption_enabled: mongoEncryption.encryptionOptions !== null,
       },
-      collected_at: new Date()
+      collected_at: new Date(),
     };
   }
-  
+
   async collectBackupEvidence() {
     // Verify backups are encrypted and tested
-    const backups = await mongodb.collection('backup_logs').find({
-      backup_date: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
-    }).toArray();
-    
+    const backups = await mongodb
+      .collection("backup_logs")
+      .find({
+        backup_date: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+      })
+      .toArray();
+
     return {
-      type: 'backup',
-      period: 'weekly',
-      backups: backups.map(b => ({
+      type: "backup",
+      period: "weekly",
+      backups: backups.map((b) => ({
         date: b.backup_date,
         encrypted: b.encrypted,
         tested: b.restore_tested,
-        size: b.size
+        size: b.size,
       })),
-      collected_at: new Date()
+      collected_at: new Date(),
     };
   }
-  
+
   async generateSOC2Report() {
     const evidence = {
       access_control: await this.collectAccessControlEvidence(),
       encryption: await this.collectEncryptionEvidence(),
       backup: await this.collectBackupEvidence(),
-      generated_at: new Date()
+      generated_at: new Date(),
     };
-    
+
     // Store evidence
-    await mongodb.collection('soc2_evidence').insertOne(evidence);
-    
+    await mongodb.collection("soc2_evidence").insertOne(evidence);
+
     return evidence;
   }
 }
@@ -462,96 +472,96 @@ module.exports = SOC2Evidence;
 
 ```javascript
 // fedramp-monitoring.js
-const mongodb = require('./mongodb-client');
-const mysql = require('./mysql-client');
+const mongodb = require("./mongodb-client");
+const mysql = require("./mysql-client");
 
 class FedRAMPMonitoring {
   async monitorSecurityControls() {
     const controls = {
       // CC-1: Access Control
       access_control: await this.checkAccessControl(),
-      
+
       // SC-7: Boundary Protection
       boundary_protection: await this.checkBoundaryProtection(),
-      
+
       // SI-3: Malicious Code Protection
       malicious_code_protection: await this.checkMaliciousCodeProtection(),
-      
+
       // AU-2: Audit Events
       audit_events: await this.checkAuditEvents(),
-      
-      monitored_at: new Date()
+
+      monitored_at: new Date(),
     };
-    
+
     // Store monitoring results
-    await mongodb.collection('fedramp_monitoring').insertOne(controls);
-    
+    await mongodb.collection("fedramp_monitoring").insertOne(controls);
+
     // Alert on failures
     for (const [control, status] of Object.entries(controls)) {
-      if (control !== 'monitored_at' && !status.compliant) {
+      if (control !== "monitored_at" && !status.compliant) {
         await this.alertNonCompliance(control, status);
       }
     }
-    
+
     return controls;
   }
-  
+
   async checkAccessControl() {
     // Verify MFA is enabled
     const mfaEnabled = await this.verifyMFA();
-    
+
     // Verify least privilege
     const leastPrivilege = await this.verifyLeastPrivilege();
-    
+
     return {
       compliant: mfaEnabled && leastPrivilege,
       mfa_enabled: mfaEnabled,
-      least_privilege: leastPrivilege
+      least_privilege: leastPrivilege,
     };
   }
-  
+
   async checkBoundaryProtection() {
     // Verify firewall rules
     const firewallRules = await this.getFirewallRules();
-    
+
     // Verify network segmentation
     const networkSegmentation = await this.verifyNetworkSegmentation();
-    
+
     return {
       compliant: firewallRules.valid && networkSegmentation.valid,
       firewall_rules: firewallRules,
-      network_segmentation: networkSegmentation
+      network_segmentation: networkSegmentation,
     };
   }
-  
+
   async checkMaliciousCodeProtection() {
     // Verify antivirus is running
     const antivirusStatus = await this.checkAntivirus();
-    
+
     // Verify database security patches
     const securityPatches = await this.checkSecurityPatches();
-    
+
     return {
       compliant: antivirusStatus.active && securityPatches.current,
       antivirus: antivirusStatus,
-      security_patches: securityPatches
+      security_patches: securityPatches,
     };
   }
-  
+
   async checkAuditEvents() {
     // Verify audit logging is enabled
     const auditLogging = await this.verifyAuditLogging();
-    
+
     // Verify log retention
     const logRetention = await this.verifyLogRetention();
-    
+
     return {
       compliant: auditLogging.enabled && logRetention.compliant,
       audit_logging: auditLogging,
-      log_retention: logRetention
+      log_retention: logRetention,
     };
   }
-  
+
   async alertNonCompliance(control, status) {
     // Send alert to security team
     console.error(`[FedRAMP] Control ${control} non-compliant:`, status);

@@ -163,7 +163,7 @@ FOR CHANNEL 'us-east-to-ap-southeast';
 START SLAVE FOR CHANNEL 'us-east-to-ap-southeast';
 
 -- Monitor replication lag
-SELECT 
+SELECT
   CHANNEL_NAME,
   MASTER_LOG_FILE,
   READ_MASTER_LOG_POS,
@@ -203,7 +203,7 @@ INSERT INTO mysql_servers(hostgroup_id, hostname, port, weight, max_connections)
 
 -- Configure sharding rules
 INSERT INTO mysql_query_rules(rule_id, active, match_pattern, destination_hostgroup, apply) VALUES
-(1, 1, '^SELECT.*WHERE customer_id\s*=\s*(\d+)', 
+(1, 1, '^SELECT.*WHERE customer_id\s*=\s*(\d+)',
   (HASH(SUBSTRING_INDEX(SUBSTRING_INDEX(match_pattern, '=', -1), ' ', 1)) % 256), 1);
 
 -- Load configuration
@@ -257,7 +257,7 @@ INSTALL PLUGIN heatwave SONAME 'ha_heatwave.so';
 ALTER TABLE transactions SECONDARY_LOAD;
 
 -- Query HeatWave
-SELECT /*+ SET_VAR(use_secondary_engine=ON) */ 
+SELECT /*+ SET_VAR(use_secondary_engine=ON) */
   customer_id,
   SUM(amount) as total_amount,
   COUNT(*) as transaction_count
@@ -352,7 +352,7 @@ SELECT * FROM performance_schema.replication_group_member_stats;
 ### Check Replication Lag
 
 ```sql
-SELECT 
+SELECT
   CHANNEL_NAME,
   SECONDS_BEHIND_MASTER
 FROM performance_schema.replication_connection_status;
@@ -361,7 +361,7 @@ FROM performance_schema.replication_connection_status;
 ### Check Encryption Status
 
 ```sql
-SELECT 
+SELECT
   SCHEMA_NAME,
   TABLE_NAME,
   CREATE_OPTIONS
@@ -375,7 +375,7 @@ WHERE CREATE_OPTIONS LIKE '%ENCRYPTION%';
 -- Test write performance
 SET RESOURCE GROUP critical_operations;
 BEGIN;
-INSERT INTO transactions (customer_id, amount, transaction_type) 
+INSERT INTO transactions (customer_id, amount, transaction_type)
 VALUES (123456, 1000.00, 'TRANSFER');
 COMMIT;
 
@@ -404,7 +404,7 @@ START GROUP_REPLICATION;
 
 ```sql
 -- Check lag per channel
-SELECT CHANNEL_NAME, SECONDS_BEHIND_MASTER 
+SELECT CHANNEL_NAME, SECONDS_BEHIND_MASTER
 FROM performance_schema.replication_connection_status;
 
 -- If lag is high, check network and disk I/O

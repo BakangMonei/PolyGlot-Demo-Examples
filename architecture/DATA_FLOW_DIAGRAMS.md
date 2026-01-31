@@ -1,4 +1,5 @@
 # Data Flow Diagrams
+
 ## Consistency Boundaries and Data Flow
 
 ## Overview
@@ -482,6 +483,7 @@ These data flow diagrams illustrate:
 6. **Security Flow**: Encryption and access control
 
 All flows are designed to meet the requirements:
+
 - Sub-50ms P99 latency
 - Zero data loss (RPO=0)
 - 4-second failover (RTO=4s)

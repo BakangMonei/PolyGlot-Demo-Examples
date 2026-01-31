@@ -1,4 +1,5 @@
 # Migration Playbook
+
 ## Zero-Downtime Database Migrations
 
 ## Overview
@@ -10,6 +11,7 @@ This playbook provides procedures for performing zero-downtime migrations includ
 ### Type 1: Schema Changes (Additive)
 
 **Examples:**
+
 - Adding new columns
 - Adding new indexes
 - Adding new tables
@@ -17,12 +19,13 @@ This playbook provides procedures for performing zero-downtime migrations includ
 **Procedure:**
 
 #### Step 1: Pre-Migration Validation
+
 ```sql
 -- Verify current schema version
 SELECT schema_version FROM schema_migrations ORDER BY version DESC LIMIT 1;
 
 -- Check table sizes
-SELECT 
+SELECT
   table_name,
   ROUND(((data_length + index_length) / 1024 / 1024), 2) AS size_mb
 FROM information_schema.TABLES
@@ -31,6 +34,7 @@ ORDER BY size_mb DESC;
 ```
 
 #### Step 2: Create Migration Script
+
 ```sql
 -- migration_001_add_customer_preferences.sql
 -- Version: 001
@@ -53,13 +57,14 @@ CREATE TABLE customer_preferences (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Record migration
-INSERT INTO schema_migrations (version, description, applied_at) 
+INSERT INTO schema_migrations (version, description, applied_at)
 VALUES (001, 'Add customer preferences table', NOW());
 
 COMMIT;
 ```
 
 #### Step 3: Apply Migration (Blue-Green)
+
 ```bash
 # Apply to blue environment first
 mysql -h mysql-blue -u root -p < migration_001_add_customer_preferences.sql
@@ -78,6 +83,7 @@ mysql -h mysql-green -u root -p < migration_001_add_customer_preferences.sql
 ```
 
 #### Step 4: Rollback Procedure (if needed)
+
 ```sql
 -- rollback_001.sql
 START TRANSACTION;
@@ -92,6 +98,7 @@ COMMIT;
 ### Type 2: Schema Changes (Modifying)
 
 **Examples:**
+
 - Modifying column types
 - Dropping columns
 - Renaming columns
@@ -99,6 +106,7 @@ COMMIT;
 **Procedure:**
 
 #### Step 1: Create Backward-Compatible Migration
+
 ```sql
 -- migration_002_modify_account_balance.sql
 -- Version: 002
@@ -108,7 +116,7 @@ COMMIT;
 START TRANSACTION;
 
 -- Add new column
-ALTER TABLE accounts 
+ALTER TABLE accounts
 ADD COLUMN balance_new DECIMAL(20,2) NOT NULL DEFAULT 0.00 AFTER balance;
 
 -- Migrate data
@@ -121,6 +129,7 @@ COMMIT;
 ```
 
 #### Step 2: Application Update
+
 ```javascript
 // Update application to write to both columns
 async function updateBalance(accountId, amount) {
@@ -135,12 +144,13 @@ async function updateBalance(accountId, amount) {
 ```
 
 #### Step 3: Switch to New Column
+
 ```sql
 -- migration_002_switch.sql
 START TRANSACTION;
 
 -- Rename columns
-ALTER TABLE accounts 
+ALTER TABLE accounts
 CHANGE COLUMN balance balance_old DECIMAL(15,2),
 CHANGE COLUMN balance_new balance DECIMAL(20,2);
 
@@ -152,6 +162,7 @@ COMMIT;
 ```
 
 #### Step 4: Cleanup
+
 ```sql
 -- migration_002_cleanup.sql
 START TRANSACTION;
@@ -165,6 +176,7 @@ COMMIT;
 ### Type 3: Data Migrations
 
 **Examples:**
+
 - Migrating data between tables
 - Data transformations
 - Data archival
@@ -172,14 +184,15 @@ COMMIT;
 **Procedure:**
 
 #### Step 1: Create Migration Script
+
 ```javascript
 // migration_003_archive_old_transactions.js
-const mysql = require('./mysql-client');
-const mongodb = require('./mongodb-client');
+const mysql = require("./mysql-client");
+const mongodb = require("./mongodb-client");
 
 async function archiveOldTransactions() {
-  const cutoffDate = new Date('2024-01-01');
-  
+  const cutoffDate = new Date("2024-01-01");
+
   // Find transactions to archive
   const transactions = await mysql.query(
     `SELECT * FROM transactions 
@@ -188,14 +201,14 @@ async function archiveOldTransactions() {
      LIMIT 10000`,
     [cutoffDate]
   );
-  
+
   // Archive to MongoDB
   for (const transaction of transactions) {
-    await mongodb.collection('transactions_archive').insertOne({
+    await mongodb.collection("transactions_archive").insertOne({
       ...transaction,
-      archived_at: new Date()
+      archived_at: new Date(),
     });
-    
+
     // Mark as archived in MySQL
     await mysql.query(
       `UPDATE transactions 
@@ -204,12 +217,14 @@ async function archiveOldTransactions() {
       [transaction.transaction_id]
     );
   }
-  
+
   // Verify migration
-  const archivedCount = await mongodb.collection('transactions_archive').countDocuments({
-    archived_at: { $gte: new Date() }
-  });
-  
+  const archivedCount = await mongodb
+    .collection("transactions_archive")
+    .countDocuments({
+      archived_at: { $gte: new Date() },
+    });
+
   console.log(`Archived ${archivedCount} transactions`);
 }
 
@@ -221,7 +236,7 @@ async function runMigration() {
     const count = await archiveOldTransactions();
     if (count === 0) break;
     batch++;
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Rate limiting
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // Rate limiting
   }
 }
 ```
@@ -229,6 +244,7 @@ async function runMigration() {
 ### Type 4: System Upgrades
 
 **Examples:**
+
 - MySQL version upgrade
 - MongoDB version upgrade
 - OS upgrades
@@ -236,6 +252,7 @@ async function runMigration() {
 **Procedure:**
 
 #### Step 1: Pre-Upgrade Checklist
+
 ```bash
 # Backup databases
 ./backup-mysql.sh
@@ -253,6 +270,7 @@ mongosh --eval "db.version()"
 ```
 
 #### Step 2: Rolling Upgrade (MySQL)
+
 ```bash
 # Upgrade secondary nodes first
 # Node 1
@@ -269,6 +287,7 @@ mysql -u root -p -e "SHOW SLAVE STATUS\G"
 ```
 
 #### Step 3: Rolling Upgrade (MongoDB)
+
 ```bash
 # Upgrade secondary nodes first
 # Node 1
@@ -288,11 +307,13 @@ mongosh --eval "rs.stepDown()"
 ## Migration Best Practices
 
 ### 1. Always Have a Rollback Plan
+
 - Test rollback procedures in staging
 - Document rollback steps
 - Keep previous schema versions available
 
 ### 2. Use Feature Flags
+
 ```javascript
 // Feature flag for gradual rollout
 if (featureFlags.newSchemaEnabled) {
@@ -305,18 +326,21 @@ if (featureFlags.newSchemaEnabled) {
 ```
 
 ### 3. Monitor During Migration
+
 - Monitor application errors
 - Monitor database performance
 - Monitor replication lag
 - Set up alerts for anomalies
 
 ### 4. Gradual Rollout
+
 - Start with low-traffic periods
 - Migrate small batches first
 - Increase batch size gradually
 - Monitor at each step
 
 ### 5. Communication
+
 - Notify stakeholders before migration
 - Provide status updates during migration
 - Document any issues encountered
@@ -325,6 +349,7 @@ if (featureFlags.newSchemaEnabled) {
 ## Migration Checklist
 
 ### Pre-Migration
+
 - [ ] Backup all databases
 - [ ] Verify backups are restorable
 - [ ] Test migration in staging
@@ -334,6 +359,7 @@ if (featureFlags.newSchemaEnabled) {
 - [ ] Schedule maintenance window (if needed)
 
 ### During Migration
+
 - [ ] Apply migration script
 - [ ] Verify migration success
 - [ ] Run smoke tests
@@ -342,6 +368,7 @@ if (featureFlags.newSchemaEnabled) {
 - [ ] Check for errors
 
 ### Post-Migration
+
 - [ ] Verify data integrity
 - [ ] Monitor performance
 - [ ] Update documentation
@@ -351,6 +378,7 @@ if (featureFlags.newSchemaEnabled) {
 ## Migration Tools
 
 ### Version Control
+
 ```sql
 -- schema_migrations table
 CREATE TABLE schema_migrations (
@@ -364,19 +392,22 @@ CREATE TABLE schema_migrations (
 ```
 
 ### Migration Runner
+
 ```javascript
 // migration-runner.js
-const mysql = require('./mysql-client');
-const fs = require('fs');
-const path = require('path');
+const mysql = require("./mysql-client");
+const fs = require("fs");
+const path = require("path");
 
 class MigrationRunner {
   async runMigrations() {
     const migrations = this.getPendingMigrations();
-    
+
     for (const migration of migrations) {
       try {
-        console.log(`Running migration ${migration.version}: ${migration.description}`);
+        console.log(
+          `Running migration ${migration.version}: ${migration.description}`
+        );
         await this.applyMigration(migration);
         console.log(`Migration ${migration.version} completed`);
       } catch (error) {
@@ -386,23 +417,23 @@ class MigrationRunner {
       }
     }
   }
-  
+
   async applyMigration(migration) {
-    const script = fs.readFileSync(migration.path, 'utf8');
+    const script = fs.readFileSync(migration.path, "utf8");
     await mysql.query(script);
-    
+
     await mysql.query(
       `INSERT INTO schema_migrations (version, description, applied_at, applied_by, status) 
        VALUES (?, ?, NOW(), USER(), 'APPLIED')`,
       [migration.version, migration.description]
     );
   }
-  
+
   async rollbackMigration(migration) {
     if (migration.rollbackScript) {
       await mysql.query(migration.rollbackScript);
     }
-    
+
     await mysql.query(
       `UPDATE schema_migrations 
        SET status = 'ROLLED_BACK' 
@@ -410,18 +441,19 @@ class MigrationRunner {
       [migration.version]
     );
   }
-  
+
   getPendingMigrations() {
     // Read migration files from migrations/ directory
-    const migrationsDir = path.join(__dirname, 'migrations');
-    const files = fs.readdirSync(migrationsDir)
-      .filter(f => f.endsWith('.sql'))
+    const migrationsDir = path.join(__dirname, "migrations");
+    const files = fs
+      .readdirSync(migrationsDir)
+      .filter((f) => f.endsWith(".sql"))
       .sort();
-    
-    return files.map(file => ({
+
+    return files.map((file) => ({
       version: parseInt(file.match(/\d+/)[0]),
-      description: file.replace('.sql', ''),
-      path: path.join(migrationsDir, file)
+      description: file.replace(".sql", ""),
+      path: path.join(migrationsDir, file),
     }));
   }
 }
@@ -432,13 +464,15 @@ module.exports = MigrationRunner;
 ## Common Migration Patterns
 
 ### Pattern 1: Add Column with Default
+
 ```sql
-ALTER TABLE accounts 
-ADD COLUMN new_field VARCHAR(100) DEFAULT 'default_value' 
+ALTER TABLE accounts
+ADD COLUMN new_field VARCHAR(100) DEFAULT 'default_value'
 AFTER existing_field;
 ```
 
 ### Pattern 2: Rename Column
+
 ```sql
 -- Step 1: Add new column
 ALTER TABLE accounts ADD COLUMN new_name VARCHAR(100);
@@ -452,6 +486,7 @@ ALTER TABLE accounts DROP COLUMN old_name;
 ```
 
 ### Pattern 3: Change Column Type
+
 ```sql
 -- Use same pattern as rename column
 -- Add new column with new type
@@ -463,6 +498,7 @@ ALTER TABLE accounts DROP COLUMN old_name;
 ## Monitoring Migrations
 
 ### Key Metrics
+
 - Migration duration
 - Data migration rate
 - Application error rate
@@ -470,6 +506,7 @@ ALTER TABLE accounts DROP COLUMN old_name;
 - Replication lag
 
 ### Alerts
+
 - Migration failures
 - High error rates during migration
 - Performance degradation

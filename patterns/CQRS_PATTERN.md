@@ -1,4 +1,5 @@
 # CQRS Pattern Implementation
+
 ## Command Query Responsibility Segregation with Eventual Consistency
 
 ## Overview
@@ -71,17 +72,17 @@ CREATE TABLE account_events (
 
 ```javascript
 // command-handler.js
-const mysql = require('./mysql-client');
-const { v4: uuidv4 } = require('uuid');
+const mysql = require("./mysql-client");
+const { v4: uuidv4 } = require("uuid");
 
 class AccountCommandHandler {
   async createAccount(commandData) {
     const commandId = await this.createCommand({
       customer_id: commandData.customerId,
-      command_type: 'CREATE_ACCOUNT',
-      command_data: commandData
+      command_type: "CREATE_ACCOUNT",
+      command_data: commandData,
     });
-    
+
     try {
       // Execute command in MySQL
       const result = await mysql.query(
@@ -89,44 +90,46 @@ class AccountCommandHandler {
         [
           commandData.customerId,
           commandData.accountType,
-          commandData.initialBalance || 0
+          commandData.initialBalance || 0,
         ]
       );
-      
-      const accountResult = await mysql.query('SELECT @account_id as account_id, @account_number as account_number');
+
+      const accountResult = await mysql.query(
+        "SELECT @account_id as account_id, @account_number as account_number"
+      );
       const { account_id, account_number } = accountResult[0];
-      
+
       // Emit event
       await this.emitEvent({
         command_id: commandId,
-        event_type: 'ACCOUNT_CREATED',
+        event_type: "ACCOUNT_CREATED",
         event_data: {
           account_id,
           account_number,
           customer_id: commandData.customerId,
           account_type: commandData.accountType,
-          initial_balance: commandData.initialBalance || 0
+          initial_balance: commandData.initialBalance || 0,
         },
         aggregate_id: account_id,
-        aggregate_type: 'ACCOUNT'
+        aggregate_type: "ACCOUNT",
       });
-      
+
       await this.completeCommand(commandId);
-      
+
       return { account_id, account_number };
     } catch (error) {
       await this.failCommand(commandId, error.message);
       throw error;
     }
   }
-  
+
   async updateBalance(commandData) {
     const commandId = await this.createCommand({
       customer_id: commandData.customerId,
-      command_type: 'UPDATE_BALANCE',
-      command_data: commandData
+      command_type: "UPDATE_BALANCE",
+      command_data: commandData,
     });
-    
+
     try {
       // Execute command in MySQL
       await mysql.query(
@@ -137,48 +140,53 @@ class AccountCommandHandler {
          WHERE account_id = ?`,
         [commandData.amount, commandData.amount, commandData.accountId]
       );
-      
+
       // Get updated balance
       const account = await mysql.query(
         `SELECT balance, available_balance FROM accounts WHERE account_id = ?`,
         [commandData.accountId]
       );
-      
+
       // Emit event
       await this.emitEvent({
         command_id: commandId,
-        event_type: 'BALANCE_UPDATED',
+        event_type: "BALANCE_UPDATED",
         event_data: {
           account_id: commandData.accountId,
           customer_id: commandData.customerId,
           amount: commandData.amount,
           balance: account[0].balance,
-          available_balance: account[0].available_balance
+          available_balance: account[0].available_balance,
         },
         aggregate_id: commandData.accountId,
-        aggregate_type: 'ACCOUNT'
+        aggregate_type: "ACCOUNT",
       });
-      
+
       await this.completeCommand(commandId);
-      
+
       return account[0];
     } catch (error) {
       await this.failCommand(commandId, error.message);
       throw error;
     }
   }
-  
+
   async createCommand(commandData) {
     const result = await mysql.query(
       `INSERT INTO account_commands 
        (command_uuid, customer_id, command_type, command_data, status) 
        VALUES (?, ?, ?, ?, 'PENDING')`,
-      [uuidv4(), commandData.customer_id, commandData.command_type, JSON.stringify(commandData)]
+      [
+        uuidv4(),
+        commandData.customer_id,
+        commandData.command_type,
+        JSON.stringify(commandData),
+      ]
     );
-    
+
     return result.insertId;
   }
-  
+
   async emitEvent(eventData) {
     await mysql.query(
       `INSERT INTO account_events 
@@ -190,20 +198,20 @@ class AccountCommandHandler {
         eventData.event_type,
         JSON.stringify(eventData.event_data),
         eventData.aggregate_id,
-        eventData.aggregate_type
+        eventData.aggregate_type,
       ]
     );
-    
+
     // Publish to event bus for projection
     await this.publishToEventBus(eventData);
   }
-  
+
   async publishToEventBus(eventData) {
     // Publish to Kafka/RabbitMQ for event projector
-    const eventBus = require('./event-bus');
-    await eventBus.publish('account.events', eventData);
+    const eventBus = require("./event-bus");
+    await eventBus.publish("account.events", eventData);
   }
-  
+
   async completeCommand(commandId) {
     await mysql.query(
       `UPDATE account_commands 
@@ -212,7 +220,7 @@ class AccountCommandHandler {
       [commandId]
     );
   }
-  
+
   async failCommand(commandId, errorMessage) {
     await mysql.query(
       `UPDATE account_commands 
@@ -230,38 +238,39 @@ module.exports = AccountCommandHandler;
 
 ```javascript
 // event-projector.js
-const mongodb = require('./mongodb-client');
-const mysql = require('./mysql-client');
-const eventBus = require('./event-bus');
+const mongodb = require("./mongodb-client");
+const mysql = require("./mysql-client");
+const eventBus = require("./event-bus");
 
 class EventProjector {
   constructor() {
     this.projectors = new Map();
     this.setupProjectors();
   }
-  
+
   setupProjectors() {
     // Account created projector
-    this.projectors.set('ACCOUNT_CREATED', async (event) => {
+    this.projectors.set("ACCOUNT_CREATED", async (event) => {
       await this.projectAccountCreated(event);
     });
-    
+
     // Balance updated projector
-    this.projectors.set('BALANCE_UPDATED', async (event) => {
+    this.projectors.set("BALANCE_UPDATED", async (event) => {
       await this.projectBalanceUpdated(event);
     });
-    
+
     // Transaction recorded projector
-    this.projectors.set('TRANSACTION_RECORDED', async (event) => {
+    this.projectors.set("TRANSACTION_RECORDED", async (event) => {
       await this.projectTransactionRecorded(event);
     });
   }
-  
+
   async projectAccountCreated(event) {
-    const { account_id, customer_id, account_type, initial_balance } = event.event_data;
-    
+    const { account_id, customer_id, account_type, initial_balance } =
+      event.event_data;
+
     // Update customer view in MongoDB
-    await mongodb.collection('customers').updateOne(
+    await mongodb.collection("customers").updateOne(
       { customer_id },
       {
         $push: {
@@ -270,128 +279,148 @@ class EventProjector {
             account_type,
             balance: initial_balance,
             available_balance: initial_balance,
-            status: 'ACTIVE',
+            status: "ACTIVE",
             opened_date: new Date(),
-            last_transaction: null
-          }
+            last_transaction: null,
+          },
         },
         $set: {
-          updated_at: new Date()
-        }
+          updated_at: new Date(),
+        },
       }
     );
-    
-    console.log(`[Projector] Account ${account_id} created for customer ${customer_id}`);
+
+    console.log(
+      `[Projector] Account ${account_id} created for customer ${customer_id}`
+    );
   }
-  
+
   async projectBalanceUpdated(event) {
-    const { account_id, customer_id, amount, balance, available_balance } = event.event_data;
-    
+    const { account_id, customer_id, amount, balance, available_balance } =
+      event.event_data;
+
     // Update account balance in customer view
-    await mongodb.collection('customers').updateOne(
+    await mongodb.collection("customers").updateOne(
       {
         customer_id,
-        'accounts.account_id': account_id
+        "accounts.account_id": account_id,
       },
       {
         $set: {
-          'accounts.$.balance': balance,
-          'accounts.$.available_balance': available_balance,
-          'accounts.$.last_transaction': new Date(),
-          updated_at: new Date()
-        }
+          "accounts.$.balance": balance,
+          "accounts.$.available_balance": available_balance,
+          "accounts.$.last_transaction": new Date(),
+          updated_at: new Date(),
+        },
       }
     );
-    
-    console.log(`[Projector] Balance updated for account ${account_id}: ${balance}`);
+
+    console.log(
+      `[Projector] Balance updated for account ${account_id}: ${balance}`
+    );
   }
-  
+
   async projectTransactionRecorded(event) {
-    const { transaction_id, customer_id, account_id, amount, transaction_type, timestamp } = event.event_data;
-    
+    const {
+      transaction_id,
+      customer_id,
+      account_id,
+      amount,
+      transaction_type,
+      timestamp,
+    } = event.event_data;
+
     // Insert into time-series collection
-    await mongodb.collection('transactions_ts').insertOne({
+    await mongodb.collection("transactions_ts").insertOne({
       timestamp: new Date(timestamp),
       customer_id,
       transaction_id,
       account_id,
       transaction_type,
       amount,
-      status: 'COMPLETED'
+      status: "COMPLETED",
     });
-    
+
     // Update customer transaction summary
-    await mongodb.collection('customers').updateOne(
+    await mongodb.collection("customers").updateOne(
       { customer_id },
       {
         $inc: {
-          'transactions.last_30_days_count': 1,
-          'transactions.last_90_days_count': 1,
-          'transactions.last_year_count': 1,
-          'transactions.total_lifetime_count': 1
+          "transactions.last_30_days_count": 1,
+          "transactions.last_90_days_count": 1,
+          "transactions.last_year_count": 1,
+          "transactions.total_lifetime_count": 1,
         },
         $set: {
-          'transactions.last_transaction_date': new Date(timestamp),
-          updated_at: new Date()
-        }
+          "transactions.last_transaction_date": new Date(timestamp),
+          updated_at: new Date(),
+        },
       }
     );
-    
-    console.log(`[Projector] Transaction ${transaction_id} recorded for customer ${customer_id}`);
+
+    console.log(
+      `[Projector] Transaction ${transaction_id} recorded for customer ${customer_id}`
+    );
   }
-  
+
   async processEvent(event) {
     const projector = this.projectors.get(event.event_type);
-    
+
     if (!projector) {
-      console.warn(`[Projector] No projector found for event type: ${event.event_type}`);
+      console.warn(
+        `[Projector] No projector found for event type: ${event.event_type}`
+      );
       return;
     }
-    
+
     try {
       // Check for duplicate processing using idempotency key
-      const processed = await mongodb.collection('processed_events').findOne({
-        event_uuid: event.event_uuid
+      const processed = await mongodb.collection("processed_events").findOne({
+        event_uuid: event.event_uuid,
       });
-      
+
       if (processed) {
-        console.log(`[Projector] Event ${event.event_uuid} already processed, skipping`);
+        console.log(
+          `[Projector] Event ${event.event_uuid} already processed, skipping`
+        );
         return;
       }
-      
+
       // Process event
       await projector(event);
-      
+
       // Mark as processed
-      await mongodb.collection('processed_events').insertOne({
+      await mongodb.collection("processed_events").insertOne({
         event_uuid: event.event_uuid,
         event_type: event.event_type,
-        processed_at: new Date()
+        processed_at: new Date(),
       });
-      
     } catch (error) {
-      console.error(`[Projector] Error processing event ${event.event_uuid}:`, error);
+      console.error(
+        `[Projector] Error processing event ${event.event_uuid}:`,
+        error
+      );
       throw error;
     }
   }
-  
+
   async start() {
     // Subscribe to event bus
-    await eventBus.subscribe('account.events', async (event) => {
+    await eventBus.subscribe("account.events", async (event) => {
       await this.processEvent(event);
     });
-    
+
     // Also listen to MySQL binary logs via change streams
     await this.listenToMySQLChangeStreams();
   }
-  
+
   async listenToMySQLChangeStreams() {
     // Use MySQL binlog replication or Debezium to stream changes
     // This is a simplified example
-    const mysqlChangeStream = require('./mysql-change-stream');
-    
-    mysqlChangeStream.on('event', async (event) => {
-      if (event.table === 'account_events') {
+    const mysqlChangeStream = require("./mysql-change-stream");
+
+    mysqlChangeStream.on("event", async (event) => {
+      if (event.table === "account_events") {
         await this.processEvent(event);
       }
     });
@@ -405,11 +434,11 @@ module.exports = EventProjector;
 
 ```javascript
 // query-handler.js
-const mongodb = require('./mongodb-client');
+const mongodb = require("./mongodb-client");
 
 class AccountQueryHandler {
   async getCustomer360View(customerId) {
-    return await mongodb.collection('customers').findOne(
+    return await mongodb.collection("customers").findOne(
       { customer_id: customerId },
       {
         projection: {
@@ -421,58 +450,68 @@ class AccountQueryHandler {
           preferences: 1,
           risk_score: 1,
           behavior: 1,
-          products: 1
-        }
+          products: 1,
+        },
       }
     );
   }
-  
+
   async getCustomerAccounts(customerId) {
-    const customer = await mongodb.collection('customers').findOne(
-      { customer_id: customerId },
-      { projection: { accounts: 1 } }
-    );
-    
+    const customer = await mongodb
+      .collection("customers")
+      .findOne({ customer_id: customerId }, { projection: { accounts: 1 } });
+
     return customer?.accounts || [];
   }
-  
+
   async getCustomerTransactions(customerId, startDate, endDate) {
-    return await mongodb.collection('transactions_ts').find({
-      customer_id: customerId,
-      timestamp: {
-        $gte: startDate,
-        $lt: endDate
-      }
-    }).sort({ timestamp: -1 }).toArray();
+    return await mongodb
+      .collection("transactions_ts")
+      .find({
+        customer_id: customerId,
+        timestamp: {
+          $gte: startDate,
+          $lt: endDate,
+        },
+      })
+      .sort({ timestamp: -1 })
+      .toArray();
   }
-  
+
   async searchCustomers(query, filters = {}) {
     const searchPipeline = [
       {
         $search: {
-          index: 'customer_search',
+          index: "customer_search",
           text: {
             query: query,
-            path: ['personal_info.name', 'personal_info.email']
-          }
-        }
-      }
+            path: ["personal_info.name", "personal_info.email"],
+          },
+        },
+      },
     ];
-    
+
     if (Object.keys(filters).length > 0) {
       searchPipeline.push({
-        $match: filters
+        $match: filters,
       });
     }
-    
-    return await mongodb.collection('customers').aggregate(searchPipeline).toArray();
+
+    return await mongodb
+      .collection("customers")
+      .aggregate(searchPipeline)
+      .toArray();
   }
-  
-  async getCustomerAnalytics(customerId, period = 'monthly') {
+
+  async getCustomerAnalytics(customerId, period = "monthly") {
     const collectionName = `customer_analytics_${period}`;
-    return await mongodb.collection(collectionName).find({
-      customer_id: customerId
-    }).sort({ 'period.year': -1, 'period.month': -1 }).toArray();
+    return await mongodb
+      .collection(collectionName)
+      .find({
+        customer_id: customerId,
+      })
+      .sort({ "period.year": -1, "period.month": -1 })
+      .toArray();
   }
 }
 
@@ -483,8 +522,8 @@ module.exports = AccountQueryHandler;
 
 ```javascript
 // consistency-validator.js
-const mysql = require('./mysql-client');
-const mongodb = require('./mongodb-client');
+const mysql = require("./mysql-client");
+const mongodb = require("./mongodb-client");
 
 class ConsistencyValidator {
   async validateConsistency(customerId) {
@@ -495,46 +534,49 @@ class ConsistencyValidator {
        WHERE customer_id = ?`,
       [customerId]
     );
-    
+
     // Get data from MongoDB (query model)
-    const mongoCustomer = await mongodb.collection('customers').findOne(
-      { customer_id: customerId },
-      { projection: { accounts: 1 } }
-    );
-    
+    const mongoCustomer = await mongodb
+      .collection("customers")
+      .findOne({ customer_id: customerId }, { projection: { accounts: 1 } });
+
     // Compare balances
     const inconsistencies = [];
-    
+
     for (const mysqlAccount of mysqlAccounts) {
       const mongoAccount = mongoCustomer?.accounts?.find(
-        acc => acc.account_id === mysqlAccount.account_id
+        (acc) => acc.account_id === mysqlAccount.account_id
       );
-      
+
       if (!mongoAccount) {
         inconsistencies.push({
           account_id: mysqlAccount.account_id,
-          issue: 'Account missing in MongoDB',
-          mysql_balance: mysqlAccount.balance
+          issue: "Account missing in MongoDB",
+          mysql_balance: mysqlAccount.balance,
         });
       } else if (
-        Math.abs(parseFloat(mysqlAccount.balance) - parseFloat(mongoAccount.balance)) > 0.01
+        Math.abs(
+          parseFloat(mysqlAccount.balance) - parseFloat(mongoAccount.balance)
+        ) > 0.01
       ) {
         inconsistencies.push({
           account_id: mysqlAccount.account_id,
-          issue: 'Balance mismatch',
+          issue: "Balance mismatch",
           mysql_balance: mysqlAccount.balance,
           mongo_balance: mongoAccount.balance,
-          difference: Math.abs(parseFloat(mysqlAccount.balance) - parseFloat(mongoAccount.balance))
+          difference: Math.abs(
+            parseFloat(mysqlAccount.balance) - parseFloat(mongoAccount.balance)
+          ),
         });
       }
     }
-    
+
     // Check vector clocks for ordering
-    const mysqlClock = await this.getVectorClock('mysql', customerId);
-    const mongoClock = await this.getVectorClock('mongodb', customerId);
-    
+    const mysqlClock = await this.getVectorClock("mysql", customerId);
+    const mongoClock = await this.getVectorClock("mongodb", customerId);
+
     const isConsistent = this.isVectorClockConsistent(mysqlClock, mongoClock);
-    
+
     return {
       customer_id: customerId,
       consistent: inconsistencies.length === 0 && isConsistent,
@@ -542,13 +584,13 @@ class ConsistencyValidator {
       vector_clocks: {
         mysql: mysqlClock,
         mongodb: mongoClock,
-        consistent: isConsistent
-      }
+        consistent: isConsistent,
+      },
     };
   }
-  
+
   async getVectorClock(system, customerId) {
-    if (system === 'mysql') {
+    if (system === "mysql") {
       const result = await mysql.query(
         `SELECT MAX(event_id) as last_event_id 
          FROM account_events 
@@ -557,29 +599,30 @@ class ConsistencyValidator {
          )`,
         [customerId]
       );
-      return { system: 'mysql', last_event_id: result[0].last_event_id || 0 };
+      return { system: "mysql", last_event_id: result[0].last_event_id || 0 };
     } else {
-      const result = await mongodb.collection('processed_events').findOne(
-        { customer_id: customerId },
-        { sort: { processed_at: -1 } }
-      );
-      return { 
-        system: 'mongodb', 
+      const result = await mongodb
+        .collection("processed_events")
+        .findOne({ customer_id: customerId }, { sort: { processed_at: -1 } });
+      return {
+        system: "mongodb",
         last_event_id: result?.event_id || 0,
-        processed_at: result?.processed_at || null
+        processed_at: result?.processed_at || null,
       };
     }
   }
-  
+
   isVectorClockConsistent(mysqlClock, mongoClock) {
     // Simple consistency check - in production, use proper vector clock comparison
     // MongoDB should have processed all events up to MySQL's last event
     return mongoClock.last_event_id >= mysqlClock.last_event_id;
   }
-  
+
   async triggerReconciliation(customerId) {
-    console.log(`[ConsistencyValidator] Triggering reconciliation for customer ${customerId}`);
-    
+    console.log(
+      `[ConsistencyValidator] Triggering reconciliation for customer ${customerId}`
+    );
+
     // Re-project all events for this customer
     const events = await mysql.query(
       `SELECT e.* 
@@ -589,20 +632,22 @@ class ConsistencyValidator {
        ORDER BY e.event_id ASC`,
       [customerId]
     );
-    
-    const projector = require('./event-projector');
-    
+
+    const projector = require("./event-projector");
+
     for (const event of events) {
       await projector.processEvent({
         event_uuid: event.event_uuid,
         event_type: event.event_type,
         event_data: JSON.parse(event.event_data),
         aggregate_id: event.aggregate_id,
-        aggregate_type: event.aggregate_type
+        aggregate_type: event.aggregate_type,
       });
     }
-    
-    console.log(`[ConsistencyValidator] Reconciliation completed for customer ${customerId}`);
+
+    console.log(
+      `[ConsistencyValidator] Reconciliation completed for customer ${customerId}`
+    );
   }
 }
 
@@ -613,9 +658,9 @@ module.exports = ConsistencyValidator;
 
 ```javascript
 // application.js
-const AccountCommandHandler = require('./command-handler');
-const AccountQueryHandler = require('./query-handler');
-const ConsistencyValidator = require('./consistency-validator');
+const AccountCommandHandler = require("./command-handler");
+const AccountQueryHandler = require("./query-handler");
+const ConsistencyValidator = require("./consistency-validator");
 
 // Write operation (Command)
 async function createAccount(customerId, accountType, initialBalance) {
@@ -623,7 +668,7 @@ async function createAccount(customerId, accountType, initialBalance) {
   return await commandHandler.createAccount({
     customerId,
     accountType,
-    initialBalance
+    initialBalance,
   });
 }
 
@@ -637,11 +682,11 @@ async function getCustomerView(customerId) {
 async function validateCustomerData(customerId) {
   const validator = new ConsistencyValidator();
   const result = await validator.validateConsistency(customerId);
-  
+
   if (!result.consistent) {
     await validator.triggerReconciliation(customerId);
   }
-  
+
   return result;
 }
 ```
