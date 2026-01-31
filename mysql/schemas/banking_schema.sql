@@ -643,3 +643,8 @@ CREATE USER IF NOT EXISTS 'banking_admin'@'localhost' IDENTIFIED BY 'secure_pass
 GRANT ALL PRIVILEGES ON banking.* TO 'banking_admin'@'localhost';
 
 FLUSH PRIVILEGES;
+
+-- ============================================================================
+SHOW TABLES;
+SHOW TABLE STATUS;
+
