@@ -82,18 +82,8 @@ CREATE TABLE transactions (
   fraud_score DECIMAL(5,4) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  -- Audit hash for compliance
-  audit_hash VARCHAR(64) AS (
-    SHA2(CONCAT(
-      transaction_id, '|',
-      account_id, '|',
-      customer_id, '|',
-      transaction_type, '|',
-      amount, '|',
-      transaction_date, '|',
-      status
-    ), 256)
-  ) STORED,
+  -- Audit hash for compliance (calculated via trigger)
+  audit_hash VARCHAR(64) NULL,
   FOREIGN KEY (account_id) REFERENCES accounts(account_id) ON DELETE RESTRICT,
   FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE RESTRICT,
   FOREIGN KEY (related_transaction_id) REFERENCES transactions(transaction_id) ON DELETE SET NULL,
@@ -483,6 +473,61 @@ DELIMITER ;
 -- ============================================================================
 
 DELIMITER //
+
+-- Trigger for transaction audit hash calculation (INSERT)
+CREATE TRIGGER transactions_audit_hash_insert
+BEFORE INSERT ON transactions
+FOR EACH ROW
+BEGIN
+  -- Calculate audit hash after transaction_id is assigned
+  -- Note: transaction_id will be NULL during INSERT, so we'll calculate it in AFTER INSERT trigger
+  SET NEW.audit_hash = NULL;
+END//
+
+-- Trigger for transaction audit hash calculation (AFTER INSERT)
+CREATE TRIGGER transactions_audit_hash_after_insert
+AFTER INSERT ON transactions
+FOR EACH ROW
+BEGIN
+  -- Calculate audit hash now that transaction_id is available
+  UPDATE transactions
+  SET audit_hash = SHA2(CONCAT(
+    NEW.transaction_id, '|',
+    NEW.account_id, '|',
+    NEW.customer_id, '|',
+    NEW.transaction_type, '|',
+    NEW.amount, '|',
+    NEW.transaction_date, '|',
+    NEW.status
+  ), 256)
+  WHERE transaction_id = NEW.transaction_id;
+END//
+
+-- Trigger for transaction audit hash calculation (UPDATE)
+CREATE TRIGGER transactions_audit_hash_update
+AFTER UPDATE ON transactions
+FOR EACH ROW
+BEGIN
+  -- Recalculate audit hash if key fields changed
+  IF OLD.account_id != NEW.account_id OR
+     OLD.customer_id != NEW.customer_id OR
+     OLD.transaction_type != NEW.transaction_type OR
+     OLD.amount != NEW.amount OR
+     OLD.transaction_date != NEW.transaction_date OR
+     OLD.status != NEW.status THEN
+    UPDATE transactions
+    SET audit_hash = SHA2(CONCAT(
+      NEW.transaction_id, '|',
+      NEW.account_id, '|',
+      NEW.customer_id, '|',
+      NEW.transaction_type, '|',
+      NEW.amount, '|',
+      NEW.transaction_date, '|',
+      NEW.status
+    ), 256)
+    WHERE transaction_id = NEW.transaction_id;
+  END IF;
+END//
 
 -- Trigger for account changes
 CREATE TRIGGER accounts_audit_update
