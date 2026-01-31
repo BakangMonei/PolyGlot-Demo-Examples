@@ -120,7 +120,8 @@ SET @drop_fk_sql = NULL;
 SELECT GROUP_CONCAT(
                CONCAT('DROP FOREIGN KEY ', CONSTRAINT_NAME)
                SEPARATOR ', '
-       ) INTO @drop_fk_sql
+       )
+INTO @drop_fk_sql
 FROM information_schema.TABLE_CONSTRAINTS
 WHERE TABLE_SCHEMA = DATABASE()
   AND TABLE_NAME = 'transactions'
@@ -129,7 +130,7 @@ WHERE TABLE_SCHEMA = DATABASE()
 -- Execute drop statement if foreign keys exist
 SET @alter_sql = IF(@drop_fk_sql IS NOT NULL,
                     CONCAT('ALTER TABLE transactions ', @drop_fk_sql),
-                    'SELECT 1'  -- Dummy statement if no foreign keys
+                    'SELECT 1' -- Dummy statement if no foreign keys
                  );
 
 PREPARE stmt FROM @alter_sql;
@@ -138,17 +139,15 @@ DEALLOCATE PREPARE stmt;
 
 -- Add computed column for partitioning if table already exists without it
 -- (This is safe to run even if column already exists - will be ignored)
-SET @col_exists = (
-    SELECT COUNT(*)
-    FROM information_schema.COLUMNS
-    WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME = 'transactions'
-      AND COLUMN_NAME = 'transaction_year'
-);
+SET @col_exists = (SELECT COUNT(*)
+                   FROM information_schema.COLUMNS
+                   WHERE TABLE_SCHEMA = DATABASE()
+                     AND TABLE_NAME = 'transactions'
+                     AND COLUMN_NAME = 'transaction_year');
 
 SET @add_col_sql = IF(@col_exists = 0,
                       'ALTER TABLE transactions ADD COLUMN transaction_year INT AS (YEAR(transaction_date)) STORED AFTER updated_at',
-                      'SELECT 1'  -- Dummy statement if column already exists
+                      'SELECT 1' -- Dummy statement if column already exists
                    );
 
 PREPARE stmt FROM @add_col_sql;
@@ -158,26 +157,22 @@ DEALLOCATE PREPARE stmt;
 
 -- Modify primary key to include transaction_year if table already exists
 -- Check if primary key needs to be updated (if it doesn't include transaction_year)
-SET @pk_has_year = (
-    SELECT COUNT(*)
-    FROM information_schema.KEY_COLUMN_USAGE
-    WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME = 'transactions'
-      AND CONSTRAINT_NAME = 'PRIMARY'
-      AND COLUMN_NAME = 'transaction_year'
-);
+SET @pk_has_year = (SELECT COUNT(*)
+                    FROM information_schema.KEY_COLUMN_USAGE
+                    WHERE TABLE_SCHEMA = DATABASE()
+                      AND TABLE_NAME = 'transactions'
+                      AND CONSTRAINT_NAME = 'PRIMARY'
+                      AND COLUMN_NAME = 'transaction_year');
 
-SET @table_exists = (
-    SELECT COUNT(*)
-    FROM information_schema.TABLES
-    WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME = 'transactions'
-);
+SET @table_exists = (SELECT COUNT(*)
+                     FROM information_schema.TABLES
+                     WHERE TABLE_SCHEMA = DATABASE()
+                       AND TABLE_NAME = 'transactions');
 
 -- Only modify PK if table exists, column exists, and PK doesn't include transaction_year
 SET @modify_pk_sql = IF(@table_exists > 0 AND @col_exists > 0 AND @pk_has_year = 0,
                         'ALTER TABLE transactions DROP PRIMARY KEY, ADD PRIMARY KEY (transaction_year, transaction_id)',
-                        'SELECT 1'  -- Dummy statement if conditions not met
+                        'SELECT 1' -- Dummy statement if conditions not met
                      );
 
 PREPARE stmt FROM @modify_pk_sql;
@@ -647,4 +642,254 @@ FLUSH PRIVILEGES;
 -- ============================================================================
 SHOW TABLES;
 SHOW TABLE STATUS;
+
+
+-- Sample Data Inserts for Banking Schema
+
+USE banking;
+
+-- ============================================================================
+-- CUSTOMERS
+-- ============================================================================
+
+INSERT INTO customers (customer_uuid, first_name, last_name, email, phone, date_of_birth, ssn_hash, address_line1,
+                       address_line2, city, state, postal_code, country, status)
+VALUES ('550e8400-e29b-41d4-a716-446655440001', 'John', 'Doe', 'john.doe@example.com', '+1-555-0101', '1985-03-15',
+        SHA2('123-45-6789', 256), '123 Main Street', 'Apt 4B', 'New York', 'NY', '10001', 'US', 'ACTIVE'),
+       ('550e8400-e29b-41d4-a716-446655440002', 'Jane', 'Smith', 'jane.smith@example.com', '+1-555-0102', '1990-07-22',
+        SHA2('234-56-7890', 256), '456 Oak Avenue', NULL, 'Los Angeles', 'CA', '90028', 'US', 'ACTIVE'),
+       ('550e8400-e29b-41d4-a716-446655440003', 'Michael', 'Johnson', 'michael.j@example.com', '+1-555-0103',
+        '1988-11-08', SHA2('345-67-8901', 256), '789 Pine Road', 'Suite 200', 'Chicago', 'IL', '60611', 'US', 'ACTIVE'),
+       ('550e8400-e29b-41d4-a716-446655440004', 'Sarah', 'Williams', 'sarah.w@example.com', '+1-555-0104', '1992-05-30',
+        SHA2('456-78-9012', 256), '321 Elm Street', NULL, 'Houston', 'TX', '77001', 'US', 'ACTIVE'),
+       ('550e8400-e29b-41d4-a716-446655440005', 'David', 'Brown', 'david.brown@example.com', '+1-555-0105',
+        '1987-09-14', SHA2('567-89-0123', 256), '654 Maple Drive', 'Unit 5', 'Phoenix', 'AZ', '85001', 'US', 'ACTIVE');
+
+-- ============================================================================
+-- BRANCHES
+-- ============================================================================
+
+INSERT INTO branches (branch_code, branch_name, address_line1, address_line2, city, state, postal_code, country, phone,
+                      email, location, timezone, status)
+VALUES ('NYAC001', 'New York Main Branch', '123 Wall Street', 'Floor 10', 'New York', 'NY', '10005', 'US',
+        '+1-212-555-1001', 'nyc001@banking.com', ST_GeomFromText('POINT(-74.006 40.7128)'), 'America/New_York',
+        'ACTIVE'),
+       ('LAEX001', 'Los Angeles Branch', '456 Sunset Blvd', NULL, 'Los Angeles', 'CA', '90028', 'US', '+1-323-555-2001',
+        'lax001@banking.com', ST_GeomFromText('POINT(-118.2437 34.0522)'), 'America/Los_Angeles', 'ACTIVE'),
+       ('CHIx001', 'Chicago Branch', '789 Michigan Ave', 'Suite 500', 'Chicago', 'IL', '60611', 'US', '+1-312-555-3001',
+        'chi001@banking.com', ST_GeomFromText('POINT(-87.6298 41.8781)'), 'America/Chicago', 'ACTIVE'),
+       ('HOUx001', 'Houston Branch', '321 Main Street', NULL, 'Houston', 'TX', '77001', 'US', '+1-713-555-4001',
+        'hou001@banking.com', ST_GeomFromText('POINT(-95.3698 29.7604)'), 'America/Chicago', 'ACTIVE'),
+       ('PHX0x01', 'Phoenix Branch', '654 Central Ave', NULL, 'Phoenix', 'AZ', '85001', 'US', '+1-602-555-5001',
+        'phx001@banking.com', ST_GeomFromText('POINT(-112.0740 33.4484)'), 'America/Phoenix', 'ACTIVE');
+
+
+SELECT branch_id, branch_code, branch_name
+FROM branches
+WHERE branch_code = 'NYC001';
+
+SELECT * From branches;
+
+-- ============================================================================
+-- MERCHANTS
+-- ============================================================================
+
+INSERT INTO merchants (merchant_code, merchant_name, merchant_category, location, status)
+VALUES ('MCH001', 'Amazon.com', 'E-commerce', ST_GeomFromText('POINT(-122.3319 47.6062)'), 'ACTIVE'),
+       ('MCH002', 'Starbucks Coffee', 'Food & Beverage', ST_GeomFromText('POINT(-122.3308 47.6062)'), 'ACTIVE'),
+       ('MCH003', 'Walmart Supercenter', 'Retail', ST_GeomFromText('POINT(-96.7970 32.7767)'), 'ACTIVE'),
+       ('MCH004', 'Shell Gas Station', 'Gas Station', ST_GeomFromText('POINT(-74.0060 40.7128)'), 'ACTIVE'),
+       ('MCH005', 'Target Store', 'Retail', ST_GeomFromText('POINT(-118.2437 34.0522)'), 'ACTIVE'),
+       ('MCH006', 'Uber Technologies', 'Transportation', ST_GeomFromText('POINT(-122.4194 37.7749)'), 'ACTIVE'),
+       ('MCH007', 'Netflix', 'Entertainment', ST_GeomFromText('POINT(-122.0574 37.3875)'), 'ACTIVE'),
+       ('MCH008', 'Apple Store', 'Electronics', ST_GeomFromText('POINT(-122.4064 37.7879)'), 'ACTIVE');
+
+-- ============================================================================
+-- ACCOUNTS
+-- ============================================================================
+
+INSERT INTO accounts (account_number, customer_id, account_type, balance, available_balance, currency, interest_rate,
+                      opened_date, status)
+VALUES ('ACC0000000001', 1, 'CHECKING', 5000.00, 5000.00, 'USD', 0.0000, '2020-01-15', 'ACTIVE'),
+       ('ACC0000000002', 1, 'SAVINGS', 25000.00, 25000.00, 'USD', 0.0100, '2020-02-01', 'ACTIVE'),
+       ('ACC0000000003', 2, 'CHECKING', 3500.00, 3500.00, 'USD', 0.0000, '2021-03-10', 'ACTIVE'),
+       ('ACC0000000004', 2, 'SAVINGS', 15000.00, 15000.00, 'USD', 0.0100, '2021-03-10', 'ACTIVE'),
+       ('ACC0000000005', 3, 'CHECKING', 7500.00, 7500.00, 'USD', 0.0000, '2019-06-20', 'ACTIVE'),
+       ('ACC0000000006', 3, 'CREDIT', -500.00, 9500.00, 'USD', 0.1800, '2022-01-05', 'ACTIVE'),
+       ('ACC0000000007', 4, 'CHECKING', 12000.00, 12000.00, 'USD', 0.0000, '2021-08-12', 'ACTIVE'),
+       ('ACC0000000008', 5, 'CHECKING', 2800.00, 2800.00, 'USD', 0.0000, '2023-02-14', 'ACTIVE'),
+       ('ACC0000000009', 5, 'SAVINGS', 8000.00, 8000.00, 'USD', 0.0100, '2023-02-14', 'ACTIVE');
+
+-- ============================================================================
+-- ATMs
+-- ============================================================================
+
+INSERT INTO atms (atm_code, branch_id, location_name, address_line1, city, state, postal_code, location, status)
+VALUES ('ATM01', 1, 'Wall Street ATM', '123 Wall Street', 'New York', 'NY', '10005',
+        ST_GeomFromText('POINT(-74.006 40.7128)'), 'ACTIVE'),
+       ('ATM02', 1, 'Times Square ATM', '1500 Broadway', 'New York', 'NY', '10036',
+        ST_GeomFromText('POINT(-73.9851 40.7580)'), 'ACTIVE'),
+       ('ATM03', 2, 'Sunset Blvd ATM', '456 Sunset Blvd', 'Los Angeles', 'CA', '90028',
+        ST_GeomFromText('POINT(-118.2437 34.0522)'), 'ACTIVE'),
+       ('ATM04', 3, 'Michigan Ave ATM', '789 Michigan Ave', 'Chicago', 'IL', '60611',
+        ST_GeomFromText('POINT(-87.6298 41.8781)'), 'ACTIVE'),
+       ('ATM05', NULL, 'Standalone ATM - Houston', '500 Main Street', 'Houston', 'TX', '77001',
+        ST_GeomFromText('POINT(-95.3698 29.7604)'), 'ACTIVE');
+
+-- ============================================================================
+-- TRANSACTIONS
+-- ============================================================================
+
+INSERT INTO transactions (transaction_uuid, account_id, customer_id, transaction_type, amount, balance_after, currency,
+                          description, reference_number, merchant_id, transaction_date, posted_date, status,
+                          fraud_score)
+VALUES (UUID(), 1, 1, 'DEPOSIT', 5000.00, 5000.00, 'USD', 'Initial account deposit', 'DEP001', NULL,
+        '2020-01-15 10:00:00', '2020-01-15 10:00:00', 'COMPLETED', 0.1),
+       (UUID(), 2, 1, 'DEPOSIT', 25000.00, 25000.00, 'USD', 'Initial savings deposit', 'DEP002', NULL,
+        '2020-02-01 14:30:00', '2020-02-01 14:30:00', 'COMPLETED', 0.1),
+       (UUID(), 1, 1, 'PAYMENT', -150.00, 4850.00, 'USD', 'Payment to Amazon.com', 'PAY001', 1, '2024-01-10 09:15:00',
+        '2024-01-10 09:15:00', 'COMPLETED', 0.2),
+       (UUID(), 1, 1, 'PAYMENT', -5.50, 4844.50, 'USD', 'Starbucks Coffee purchase', 'PAY002', 2, '2024-01-12 08:30:00',
+        '2024-01-12 08:30:00', 'COMPLETED', 0.1),
+       (UUID(), 3, 2, 'DEPOSIT', 3500.00, 3500.00, 'USD', 'Initial account deposit', 'DEP003', NULL,
+        '2021-03-10 11:00:00', '2021-03-10 11:00:00', 'COMPLETED', 0.1),
+       (UUID(), 4, 2, 'DEPOSIT', 15000.00, 15000.00, 'USD', 'Initial savings deposit', 'DEP004', NULL,
+        '2021-03-10 11:05:00', '2021-03-10 11:05:00', 'COMPLETED', 0.1),
+       (UUID(), 3, 2, 'PAYMENT', -89.99, 3410.01, 'USD', 'Walmart purchase', 'PAY003', 3, '2024-01-15 16:45:00',
+        '2024-01-15 16:45:00', 'COMPLETED', 0.2),
+       (UUID(), 5, 3, 'DEPOSIT', 7500.00, 7500.00, 'USD', 'Initial account deposit', 'DEP005', NULL,
+        '2019-06-20 13:20:00', '2019-06-20 13:20:00', 'COMPLETED', 0.1),
+       (UUID(), 6, 3, 'PAYMENT', -500.00, -500.00, 'USD', 'Credit card purchase', 'PAY004', 8, '2024-01-08 10:00:00',
+        '2024-01-08 10:00:00', 'COMPLETED', 0.3),
+       (UUID(), 7, 4, 'DEPOSIT', 12000.00, 12000.00, 'USD', 'Initial account deposit', 'DEP006', NULL,
+        '2021-08-12 15:00:00', '2021-08-12 15:00:00', 'COMPLETED', 0.1),
+       (UUID(), 7, 4, 'PAYMENT', -15.00, 11985.00, 'USD', 'Uber ride', 'PAY005', 6, '2024-01-18 18:30:00',
+        '2024-01-18 18:30:00', 'COMPLETED', 0.2),
+       (UUID(), 8, 5, 'DEPOSIT', 2800.00, 2800.00, 'USD', 'Initial account deposit', 'DEP007', NULL,
+        '2023-02-14 09:00:00', '2023-02-14 09:00:00', 'COMPLETED', 0.1),
+       (UUID(), 9, 5, 'DEPOSIT', 8000.00, 8000.00, 'USD', 'Initial savings deposit', 'DEP008', NULL,
+        '2023-02-14 09:05:00', '2023-02-14 09:05:00', 'COMPLETED', 0.1),
+       (UUID(), 1, 1, 'TRANSFER', -1000.00, 3844.50, 'USD', 'Transfer to savings account', 'TRF001', NULL,
+        '2024-01-20 10:00:00', '2024-01-20 10:00:00', 'COMPLETED', 0.1),
+       (UUID(), 2, 1, 'TRANSFER', 1000.00, 26000.00, 'USD', 'Transfer from checking account', 'TRF001', NULL,
+        '2024-01-20 10:00:00', '2024-01-20 10:00:00', 'COMPLETED', 0.1),
+       (UUID(), 1, 1, 'FEE', -5.00, 3839.50, 'USD', 'Monthly maintenance fee', 'FEE001', NULL, '2024-01-31 00:00:00',
+        '2024-01-31 00:00:00', 'COMPLETED', NULL),
+       (UUID(), 2, 1, 'INTEREST', 25.00, 26025.00, 'USD', 'Monthly interest payment', 'INT001', NULL,
+        '2024-01-31 00:00:00', '2024-01-31 00:00:00', 'COMPLETED', NULL);
+
+-- Update related_transaction_id for transfer transactions
+UPDATE transactions
+SET related_transaction_id = 15
+WHERE transaction_id = 14;
+UPDATE transactions
+SET related_transaction_id = 14
+WHERE transaction_id = 15;
+
+-- ============================================================================
+-- CUSTOMER CORRESPONDENCE
+-- ============================================================================
+
+INSERT INTO customer_correspondence (customer_id, correspondence_type, subject, body, direction, created_by, created_at)
+VALUES (1, 'EMAIL', 'Welcome to Banking Platform',
+        'Dear John Doe, Welcome to our banking platform. Your account has been successfully created.', 'OUTBOUND',
+        'system@banking.com', '2020-01-15 10:05:00'),
+       (1, 'EMAIL', 'Account Statement - January 2024',
+        'Your monthly account statement for January 2024 is now available.', 'OUTBOUND', 'system@banking.com',
+        '2024-02-01 00:00:00'),
+       (2, 'EMAIL', 'Welcome to Banking Platform',
+        'Dear Jane Smith, Welcome to our banking platform. Your account has been successfully created.', 'OUTBOUND',
+        'system@banking.com', '2021-03-10 11:10:00'),
+       (1, 'PHONE', 'Fraud Alert Follow-up',
+        'Called customer to verify recent transaction. Customer confirmed transaction was legitimate.', 'INBOUND',
+        'fraud_team@banking.com', '2024-01-10 14:30:00'),
+       (3, 'CHAT', 'Question about credit card', 'Customer asked about credit card interest rates and payment options.',
+        'INBOUND', 'customer_service@banking.com', '2024-01-08 15:20:00'),
+       (4, 'EMAIL', 'Account Security Update',
+        'We have updated your account security settings. Please review your preferences.', 'OUTBOUND',
+        'security@banking.com', '2024-01-15 09:00:00');
+
+-- ============================================================================
+-- AUDIT LOG
+-- ============================================================================
+
+INSERT INTO audit_log (table_name, record_id, action, old_values, new_values, user_id, ip_address, user_agent,
+                       created_at)
+VALUES ('accounts', 1, 'UPDATE', JSON_OBJECT('balance', 5000.00, 'status', 'PENDING'),
+        JSON_OBJECT('balance', 5000.00, 'status', 'ACTIVE'), 'banking_app', '192.168.1.100', 'BankingApp/1.0',
+        '2020-01-15 10:00:00'),
+       ('accounts', 1, 'UPDATE', JSON_OBJECT('balance', 5000.00, 'status', 'ACTIVE'),
+        JSON_OBJECT('balance', 4850.00, 'status', 'ACTIVE'), 'banking_app', '192.168.1.100', 'BankingApp/1.0',
+        '2024-01-10 09:15:00'),
+       ('accounts', 1, 'UPDATE', JSON_OBJECT('balance', 4850.00, 'status', 'ACTIVE'),
+        JSON_OBJECT('balance', 4844.50, 'status', 'ACTIVE'), 'banking_app', '192.168.1.100', 'BankingApp/1.0',
+        '2024-01-12 08:30:00'),
+       ('accounts', 1, 'UPDATE', JSON_OBJECT('balance', 4844.50, 'status', 'ACTIVE'),
+        JSON_OBJECT('balance', 3844.50, 'status', 'ACTIVE'), 'banking_app', '192.168.1.100', 'BankingApp/1.0',
+        '2024-01-20 10:00:00'),
+       ('accounts', 2, 'UPDATE', JSON_OBJECT('balance', 26000.00, 'status', 'ACTIVE'),
+        JSON_OBJECT('balance', 26025.00, 'status', 'ACTIVE'), 'banking_app', '192.168.1.100', 'BankingApp/1.0',
+        '2024-01-31 00:00:00'),
+       ('customers', 1, 'UPDATE', JSON_OBJECT('status', 'PENDING'), JSON_OBJECT('status', 'ACTIVE'), 'banking_admin',
+        '10.0.0.1', 'AdminPanel/2.0', '2020-01-15 10:00:00'),
+       ('transactions', 3, 'INSERT', NULL, JSON_OBJECT('transaction_id', 3, 'amount', -150.00, 'status', 'COMPLETED'),
+        'banking_app', '192.168.1.100', 'BankingApp/1.0', '2024-01-10 09:15:00');
+
+-- ============================================================================
+-- USER PERMISSIONS
+-- ============================================================================
+
+INSERT INTO user_permissions (user_id, customer_ids, role)
+VALUES ('analyst@banking.com', JSON_ARRAY(1, 2, 3, 4, 5), 'fraud_analyst'),
+       ('service@banking.com', JSON_ARRAY(1, 2), 'customer_service'),
+       ('service2@banking.com', JSON_ARRAY(3, 4, 5), 'customer_service'),
+       ('admin@banking.com', JSON_ARRAY(1, 2, 3, 4, 5), 'admin'),
+       ('manager@banking.com', JSON_ARRAY(1, 2, 3, 4, 5), 'manager');
+
+-- ============================================================================
+-- VERIFICATION QUERIES
+-- ============================================================================
+
+-- Verify data was inserted correctly
+SELECT 'Customers' AS table_name, COUNT(*) AS record_count
+FROM customers
+UNION ALL
+SELECT 'Accounts', COUNT(*)
+FROM accounts
+UNION ALL
+SELECT 'Transactions', COUNT(*)
+FROM transactions
+UNION ALL
+SELECT 'Branches', COUNT(*)
+FROM branches
+UNION ALL
+SELECT 'ATMs', COUNT(*)
+FROM atms
+UNION ALL
+SELECT 'Merchants', COUNT(*)
+FROM merchants
+UNION ALL
+SELECT 'Customer Correspondence', COUNT(*)
+FROM customer_correspondence
+UNION ALL
+SELECT 'Audit Log', COUNT(*)
+FROM audit_log
+UNION ALL
+SELECT 'User Permissions', COUNT(*)
+FROM user_permissions;
+
+-- View customer account summary (view)
+SELECT *
+FROM customer_account_summary
+LIMIT 5;
+
+-- View transaction summary daily (view)
+SELECT *
+FROM transaction_summary_daily
+WHERE transaction_date >= '2024-01-01'
+LIMIT 10;
+
+
+
+
 
