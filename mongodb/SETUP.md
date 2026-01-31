@@ -130,8 +130,9 @@ db.createCollection("transactions_ts", {
     timeField: "timestamp",
     metaField: "customer_id",
     granularity: "seconds",
-    bucketMaxSpanSeconds: 3600,
-    bucketRoundingSeconds: 60,
+    // bucketMaxSpanSeconds is not a valid option in MongoDB 6.0+
+    // Bucket size is automatically managed by MongoDB
+    bucketRoundingSeconds: 60,  // Optional: Round bucket boundaries
   },
   expireAfterSeconds: 63072000, // 2 years retention
 });
