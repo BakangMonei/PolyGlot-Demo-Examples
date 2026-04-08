@@ -46,7 +46,8 @@ This repository contains the complete architecture, implementation, and operatio
 ├── migrations/           # Migration playbooks and scripts
 ├── capacity-planning/    # Capacity models and projections
 ├── innovation/           # ML, blockchain, quantum readiness
-└── operations/           # Team topology and training programs
+├── operations/           # Team topology and training programs
+└── polyglot/             # Java, Rust, C#, and multi-language client examples
 ```
 
 ## Quick Start
@@ -56,6 +57,7 @@ This repository contains the complete architecture, implementation, and operatio
 3. Configure MongoDB using [MongoDB Setup Guide](./mongodb/SETUP.md)
 4. Deploy consistency patterns from [Patterns Directory](./patterns/)
 5. Set up observability using [Observability Guide](./observability/SETUP.md)
+6. Review [Polyglot client guides](./polyglot/README.md) for Java, Rust, C#, and other runtimes
 
 ## Success Criteria
 
