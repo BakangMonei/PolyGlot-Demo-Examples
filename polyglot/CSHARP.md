@@ -2,11 +2,11 @@
 
 ## Recommended Packages
 
-| Database | Package | Notes |
-| -------- | ------- | ----- |
-| MySQL | [MySqlConnector](https://github.com/mysql-net/MySqlConnector) | High-performance ADO.NET driver |
-| MongoDB | [MongoDB.Driver](https://www.mongodb.com/docs/drivers/csharp/) | Official driver |
-| ORM (optional) | EF Core Pomelo provider | Migrations-heavy teams |
+| Database       | Package                                                        | Notes                           |
+| -------------- | -------------------------------------------------------------- | ------------------------------- |
+| MySQL          | [MySqlConnector](https://github.com/mysql-net/MySqlConnector)  | High-performance ADO.NET driver |
+| MongoDB        | [MongoDB.Driver](https://www.mongodb.com/docs/drivers/csharp/) | Official driver                 |
+| ORM (optional) | EF Core Pomelo provider                                        | Migrations-heavy teams          |
 
 ## 1. MySqlConnector + Idempotent Debit
 
