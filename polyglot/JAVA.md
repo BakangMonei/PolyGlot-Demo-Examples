@@ -2,11 +2,11 @@
 
 ## Stack Options
 
-| Layer | Common choices |
-| ----- | -------------- |
-| MySQL | JDBC + **HikariCP**, jOOQ, Spring Data JDBC, Hibernate |
+| Layer   | Common choices                                                  |
+| ------- | --------------------------------------------------------------- |
+| MySQL   | JDBC + **HikariCP**, jOOQ, Spring Data JDBC, Hibernate          |
 | MongoDB | **MongoDB Java Driver** (sync or reactive), Spring Data MongoDB |
-| Async | Virtual threads (Java 21+), Project Reactor, JDK `HttpClient` |
+| Async   | Virtual threads (Java 21+), Project Reactor, JDK `HttpClient`   |
 
 ## 1. HikariCP + JDBC (System of Record)
 

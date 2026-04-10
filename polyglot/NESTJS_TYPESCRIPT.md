@@ -56,7 +56,7 @@ export class LedgerService {
     accountId: bigint,
     amountMinor: bigint,
     idempotencyKey: string,
-    correlationId: string
+    correlationId: string,
   ): Promise<boolean> {
     const conn = await this.pool.getConnection();
     try {
@@ -65,9 +65,10 @@ export class LedgerService {
         `INSERT IGNORE INTO ledger_operations
            (idempotency_key, account_id, amount_minor, op_type, correlation_id)
          VALUES (?, ?, ?, 'DEBIT', ?)`,
-        [idempotencyKey, accountId, amountMinor, correlationId]
+        [idempotencyKey, accountId, amountMinor, correlationId],
       );
-      const affectedInsert = (ins as import("mysql2").ResultSetHeader).affectedRows;
+      const affectedInsert = (ins as import("mysql2").ResultSetHeader)
+        .affectedRows;
       if (affectedInsert === 0) {
         await conn.rollback();
         return false;
@@ -79,7 +80,7 @@ export class LedgerService {
              available_balance = available_balance - ?
          WHERE account_id = ?
            AND available_balance >= ?`,
-        [amountMinor, amountMinor, accountId, amountMinor]
+        [amountMinor, amountMinor, accountId, amountMinor],
       );
       if ((upd as import("mysql2").ResultSetHeader).affectedRows !== 1) {
         await conn.rollback();
@@ -113,7 +114,7 @@ export class EngagementService {
     customerId: string,
     transferId: string,
     amountMinor: number,
-    currency: string
+    currency: string,
   ) {
     const col = this.connection.collection("customers");
     await col.updateOne(
@@ -128,7 +129,7 @@ export class EngagementService {
           },
         },
         $set: { last_updated_at: new Date() },
-      }
+      },
     );
   }
 }
@@ -137,7 +138,14 @@ export class EngagementService {
 ## Controller Wiring
 
 ```typescript
-import { Body, Controller, Headers, Param, Post, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Headers,
+  Param,
+  Post,
+  UseGuards,
+} from "@nestjs/common";
 import { IdempotencyGuard } from "../common/idempotency.guard";
 import { LedgerService } from "./ledger.service";
 
@@ -155,13 +163,13 @@ export class LedgerController {
   @UseGuards(IdempotencyGuard)
   async debit(
     @Param("idempotencyKey") idempotencyKey: string,
-    @Body() body: DebitDto
+    @Body() body: DebitDto,
   ) {
     const applied = await this.ledger.debitIfAbsent(
       BigInt(body.accountId),
       BigInt(body.amountMinor),
       idempotencyKey,
-      body.correlationId
+      body.correlationId,
     );
     return { applied };
   }
