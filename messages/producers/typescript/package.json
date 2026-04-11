@@ -1,0 +1,8 @@
+{
+  "name": "kafka-producer-ts",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "tsx producer.ts" },
+  "dependencies": { "kafkajs": "^2.2.4" },
+  "devDependencies": { "tsx": "^4.19.2", "typescript": "^5.7.2" }
+}

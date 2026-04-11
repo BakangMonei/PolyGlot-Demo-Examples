@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package banking.accounts.v1;
+
+option java_multiple_files = true;
+option csharp_namespace = "Banking.Accounts.V1";
+
+message AccountSnapshot {
+  string account_id = 1;
+  string currency = 2;
+  int64 balance_minor = 3;
+  string status = 4;
+}
+
+message GetAccountRequest {
+  string account_id = 1;
+  string correlation_id = 2;
+}
+
+service AccountQuery {
+  rpc GetAccount(GetAccountRequest) returns (AccountSnapshot);
+}

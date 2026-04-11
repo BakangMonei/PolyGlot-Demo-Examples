@@ -257,7 +257,7 @@ class JustInTimeAccess {
       .collection("jit_access_grants")
       .updateOne(
         { access_token: accessToken },
-        { $set: { status: "REVOKED", revoked_at: new Date() } }
+        { $set: { status: "REVOKED", revoked_at: new Date() } },
       );
   }
 }
@@ -328,7 +328,7 @@ class GDPRErasure {
         `erased-${erasureHash}@erased.com`,
         erasureHash,
         customerId,
-      ]
+      ],
     );
 
     // Erase from MongoDB
@@ -343,7 +343,7 @@ class GDPRErasure {
           status: "ERASED",
           erased_at: new Date(),
         },
-      }
+      },
     );
 
     // Log erasure
@@ -359,7 +359,7 @@ class GDPRErasure {
     // GDPR/CCPA: Right to data portability
     const mysqlData = await mysql.query(
       `SELECT * FROM customers WHERE customer_id = ?`,
-      [customerId]
+      [customerId],
     );
 
     const mongoData = await mongodb
@@ -391,7 +391,7 @@ class SOC2Evidence {
       `SELECT user_id, action, resource, timestamp 
        FROM access_log 
        WHERE timestamp >= DATE_SUB(NOW(), INTERVAL 1 DAY)
-       ORDER BY timestamp DESC`
+       ORDER BY timestamp DESC`,
     );
 
     return {
@@ -407,7 +407,7 @@ class SOC2Evidence {
     const mysqlEncryption = await mysql.query(
       `SELECT TABLE_SCHEMA, TABLE_NAME, CREATE_OPTIONS 
        FROM information_schema.TABLES 
-       WHERE CREATE_OPTIONS LIKE '%ENCRYPTION%'`
+       WHERE CREATE_OPTIONS LIKE '%ENCRYPTION%'`,
     );
 
     const mongoEncryption = await mongodb.admin().command({

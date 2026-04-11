@@ -35,7 +35,7 @@ impl Ledger for LedgerSvc {
 
 ## Roles
 
-| Role | Notes |
-| ---- | ----- |
-| **Language Maintainer** | Pins `tonic` / `prost` versions and documents MSRV. |
-| **API / Contract Owner** | Owns breaking proto changes. |
+| Role                     | Notes                                               |
+| ------------------------ | --------------------------------------------------- |
+| **Language Maintainer**  | Pins `tonic` / `prost` versions and documents MSRV. |
+| **API / Contract Owner** | Owns breaking proto changes.                        |

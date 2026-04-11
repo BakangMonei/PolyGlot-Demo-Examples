@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package banking.transactions.v1;
+
+option java_multiple_files = true;
+option csharp_namespace = "Banking.Transactions.V1";
+
+// Wire format for high-throughput transaction validation (Rust) and core banking (Java).
+
+message TransactionCommand {
+  string idempotency_key = 1;
+  string account_id = 2;
+  int64 amount_minor = 3;
+  string type = 4; // debit | credit | transfer
+  string counterparty_account_id = 5;
+  string narrative = 6;
+  string correlation_id = 7;
+}
+
+message TransactionResult {
+  enum Status {
+    STATUS_UNSPECIFIED = 0;
+    ACCEPTED = 1;
+    DUPLICATE = 2;
+    REJECTED = 3;
+  }
+  Status status = 1;
+  string transaction_id = 2;
+  string reason = 3;
+}
+
+service TransactionValidator {
+  rpc Validate(TransactionCommand) returns (TransactionResult);
+}

@@ -42,7 +42,7 @@ public class LedgerService : Ledger.LedgerBase
 
 ## Roles
 
-| Role | Notes |
-| ---- | ----- |
-| **API / Contract Owner** | Owns proto versioning. |
-| **Language Maintainer** | Keeps `Grpc.AspNetCore` and generator packages aligned. |
+| Role                     | Notes                                                   |
+| ------------------------ | ------------------------------------------------------- |
+| **API / Contract Owner** | Owns proto versioning.                                  |
+| **Language Maintainer**  | Keeps `Grpc.AspNetCore` and generator packages aligned. |

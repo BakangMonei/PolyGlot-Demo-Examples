@@ -12,20 +12,20 @@ This directory complements the hybrid MySQL + MongoDB architecture with **produc
 
 ## Language folders
 
-| Folder | Entry |
-| ------ | ----- |
-| [java/](./java/README.md) | JDBC, R2DBC, gRPC |
-| [rust/](./rust/README.md) | sqlx, mongodb crate, tonic |
-| [csharp/](./csharp/README.md) | MySqlConnector, MongoDB.Driver, EF Core, gRPC |
-| [go/](./go/README.md) | database/sql, mongo-go-driver |
-| [python/](./python/README.md) | PyMySQL, pymongo, packaging |
-| [typescript/](./typescript/README.md) | mysql2, mongodb, NestJS |
-| [kotlin/](./kotlin/README.md) | JDBC, Java interop |
-| [dart/](./dart/README.md) | Server/mobile patterns + security |
-| [scala/](./scala/README.md) | Pekko HTTP + JDBC |
-| [php/](./php/README.md) | PDO saga step |
-| [ruby/](./ruby/README.md) | mysql2 saga step |
-| [elixir/](./elixir/README.md) | Ecto / MyXQL saga step |
+| Folder                                | Entry                                         |
+| ------------------------------------- | --------------------------------------------- |
+| [java/](./java/README.md)             | JDBC, R2DBC, gRPC                             |
+| [rust/](./rust/README.md)             | sqlx, mongodb crate, tonic                    |
+| [csharp/](./csharp/README.md)         | MySqlConnector, MongoDB.Driver, EF Core, gRPC |
+| [go/](./go/README.md)                 | database/sql, mongo-go-driver                 |
+| [python/](./python/README.md)         | PyMySQL, pymongo, packaging                   |
+| [typescript/](./typescript/README.md) | mysql2, mongodb, NestJS                       |
+| [kotlin/](./kotlin/README.md)         | JDBC, Java interop                            |
+| [dart/](./dart/README.md)             | Server/mobile patterns + security             |
+| [scala/](./scala/README.md)           | Pekko HTTP + JDBC                             |
+| [php/](./php/README.md)               | PDO saga step                                 |
+| [ruby/](./ruby/README.md)             | mysql2 saga step                              |
+| [elixir/](./elixir/README.md)         | Ecto / MyXQL saga step                        |
 
 ## Cross-cutting rules (all runtimes)
 

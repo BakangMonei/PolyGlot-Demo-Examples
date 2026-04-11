@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/event-accounts-updated.json",
+  "title": "AccountUpdated",
+  "type": "object",
+  "required": ["event_type", "account_id", "balance_minor", "occurred_at"],
+  "properties": {
+    "event_type": { "const": "accounts.updated" },
+    "account_id": { "type": "string" },
+    "balance_minor": { "type": "integer" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "correlation_id": { "type": "string", "format": "uuid" }
+  },
+  "additionalProperties": true
+}

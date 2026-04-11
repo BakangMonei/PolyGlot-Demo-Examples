@@ -2,8 +2,8 @@
 
 ## Hybrid Database System for Global Banking Platform
 
-**Version:** 1.0  
-**Date:** January 31, 2026  
+**Version:** 2.0 (Enterprise polyglot platform extension)  
+**Date:** April 11, 2026  
 **Author:** Senior Principal Director of Database Administration  
 **Status:** Production-Ready
 
@@ -22,12 +22,97 @@
 9. [Disaster Recovery](#disaster-recovery)
 10. [Trade-off Analysis](#trade-off-analysis)
 11. [Migration Strategy](#migration-strategy)
+12. [Enterprise Polyglot Financial Platform (C4)](#enterprise-polyglot-financial-platform-c4)
+
+---
+
+## Enterprise Polyglot Financial Platform (C4)
+
+This section describes the **demonstration monorepo** layout: unified contracts (`/shared`), **API Gateway** (`/api`), **SPA** (`/frontend`), **Kafka** (`/messages`), **AWS integrations** (`/aws`), **dual-database** MySQL + MongoDB, and **twelve** independently deployable account services under `/polyglot/<language>/account-service`.
+
+### C4 Level 1 — System Context
+
+External actors interact only with the **React SPA**. The SPA talks exclusively to the **API Gateway** (no direct database access). The gateway validates **JWT**, enforces **OpenAPI 3.1** contracts, rate limits, and injects **correlation IDs** for distributed tracing. Backend **polyglot services** implement the Financial Account Service API; they read/write **MySQL** (system of record), **MongoDB** (documents, compliance, catalog), publish to **Kafka**, and integrate **AWS** (S3 for statements/KYC, RDS/DynamoDB patterns, Secrets Manager for credentials).
+
+```mermaid
+flowchart TB
+  subgraph Clients
+    U[Customer / Operator Browser]
+  end
+  subgraph Edge["Edge & Experience"]
+    FE[React SPA /frontend]
+    GW[API Gateway Fastify /api]
+  end
+  subgraph Platform["Polyglot Platform"]
+    PS[12 x Account Services /polyglot]
+    KF[Kafka /messages]
+  end
+  subgraph Data["Data Planes"]
+    MY[(MySQL 8 / RDS)]
+    MG[(MongoDB 7)]
+  end
+  subgraph Cloud["AWS"]
+    S3[S3 Documents]
+    SM[Secrets Manager]
+    DDB[DynamoDB Sessions]
+  end
+  U --> FE
+  FE --> GW
+  GW --> PS
+  GW --> KF
+  PS --> MY
+  PS --> MG
+  PS --> KF
+  PS --> S3
+  GW --> SM
+  PS --> SM
+  GW -. optional .-> DDB
+```
+
+### C4 Level 2 — Containers
+
+| Container | Path | Responsibility |
+| --------- | ---- | ---------------- |
+| SPA | `/frontend` | Dashboard, Accounts, Transactions, Audit Log (Vite + React) |
+| API Gateway | `/api` | `/accounts`, `/transactions`, `/reports`, `/health`; JWT; OpenAPI validation; rate limit; HTTP proxy to services |
+| Messaging | `/messages` | Kafka + Zookeeper (local); topics: `transactions.created`, `accounts.updated`, `audit.events`, `fraud.alerts`; DLQ pattern |
+| S3 uploader | `/aws/s3` | Go service: KYC / report artifacts |
+| RDS helper | `/aws/rds` | Python: pooled MySQL access patterns + Flyway invocation docs |
+| DynamoDB layer | `/aws/dynamodb` | TypeScript: single-table sessions + audit pointer records |
+| IaC | `/aws/terraform` | VPC, RDS, S3, DynamoDB, Secrets (templates; no secrets in TF) |
+| Observability | `/observability` | OTel, Prometheus, Grafana, Jaeger configs |
+| Account service (per language) | `/polyglot/<lang>/account-service` | Same REST surface; Dockerfile; health |
+
+### C4 Level 3 — API Gateway components
+
+| Component | Implementation |
+| --------- | ---------------- |
+| Authentication | JWT middleware (issuer/audience from env) |
+| Validation | Request/response validated against `shared/openapi/financial-api.yaml` |
+| Rate limiting | `@fastify/rate-limit` (configurable; Redis-ready) |
+| Routing | Round-robin or configured upstream to polyglot service base URLs |
+| Correlation | `X-Correlation-Id` propagation to upstream and Kafka headers |
+
+### Contract layer
+
+| Artifact | Location |
+| -------- | -------- |
+| OpenAPI 3.1 | `shared/openapi/financial-api.yaml` |
+| AsyncAPI 2.x | `shared/asyncapi/events.yaml` |
+| Protobuf | `shared/proto/transactions.proto`, `shared/proto/accounts.proto` |
+| JSON Schema (events) | `shared/schemas/` |
+
+### Non-functional requirements (demo → production)
+
+- **No hardcoded credentials**: AWS Secrets Manager or env injected at runtime (see `/aws/secrets`).
+- **mTLS**: internal mesh certificates documented under `/security/certs/` (placeholders for local dev).
+- **RTO / RPO** (platform DR targets): **RTO 15 min**, **RPO 1 min** for regional failure; see `disaster-recovery/` updates.
 
 ---
 
 ## Executive Summary
 
-This architecture delivers a fault-tolerant, regulatory-compliant hybrid database system capable of serving 50M+ customers with 5,000+ transactions per second. The system maintains sub-50ms P99 latency while ensuring absolute data consistency across MySQL 8.0 and MongoDB 6.0+ Enterprise databases.
+This architecture delivers a fault-tolerant, regulatory-compliant hybrid database system capable of serving 50M+ customers with **10,000+ transaction writes per second** at the platform design target (see `performance/BENCHMARK_REPORT.md`), while maintaining sub-50ms P99 latency on the hot path. The system maintains absolute financial consistency in **MySQL 8.0** (double-entry, ACID) and rich operational data in **MongoDB 7.x** (documents, time-series, Atlas Search patterns), coordinated via **Kafka** and **polyglot** domain services behind a **unified API Gateway**.
 
 ### Key Metrics
 
@@ -378,7 +463,7 @@ const changeStream = db.transactions.watch(
   {
     fullDocument: "updateLookup",
     resumeAfter: resumeToken, // Resume from last processed event
-  }
+  },
 );
 
 changeStream.on("change", (change) => {
@@ -502,7 +587,7 @@ try {
   await accountsCollection.updateOne(
     { customer_id: 123 },
     { $inc: { balance: -1000 } },
-    { session }
+    { session },
   );
 
   await transactionsCollection.insertOne(
@@ -511,7 +596,7 @@ try {
       amount: 1000,
       type: "transfer",
     },
-    { session }
+    { session },
   );
 
   await session.commitTransaction();
@@ -575,7 +660,7 @@ sh.shardCollection(
   { customer_id: 1 },
   {
     presplitHashedZones: true,
-  }
+  },
 );
 
 // Tag ranges to zones
@@ -583,14 +668,14 @@ sh.updateZoneKeyRange(
   "banking.customers",
   { customer_id: MinKey },
   { customer_id: 500000000 },
-  "EU"
+  "EU",
 );
 
 sh.updateZoneKeyRange(
   "banking.customers",
   { customer_id: 500000000 },
   { customer_id: MaxKey },
-  "US"
+  "US",
 );
 ```
 
@@ -666,14 +751,14 @@ const compensators = {
     // Rollback debit
     await mysql.query(
       "UPDATE accounts SET balance = balance + ? WHERE account_id = ?",
-      [event.amount, event.from_account_id]
+      [event.amount, event.from_account_id],
     );
   },
   [sagaEvents.ACCOUNT_CREDITED]: async (event) => {
     // Rollback credit
     await mysql.query(
       "UPDATE accounts SET balance = balance - ? WHERE account_id = ?",
-      [event.amount, event.to_account_id]
+      [event.amount, event.to_account_id],
     );
   },
 };
@@ -687,7 +772,7 @@ class TransferSaga {
       // Step 1: Debit source account (MySQL)
       await this.debitAccount(
         transferRequest.from_account_id,
-        transferRequest.amount
+        transferRequest.amount,
       );
       await this.publishEvent(sagaEvents.ACCOUNT_DEBITED, {
         sagaId,
@@ -697,7 +782,7 @@ class TransferSaga {
       // Step 2: Credit destination account (MySQL)
       await this.creditAccount(
         transferRequest.to_account_id,
-        transferRequest.amount
+        transferRequest.amount,
       );
       await this.publishEvent(sagaEvents.ACCOUNT_CREDITED, {
         sagaId,
@@ -707,7 +792,7 @@ class TransferSaga {
       // Step 3: Update customer view (MongoDB)
       await this.updateCustomerView(
         transferRequest.customer_id,
-        transferRequest
+        transferRequest,
       );
       await this.publishEvent(sagaEvents.TRANSFER_COMPLETED, { sagaId });
     } catch (error) {
@@ -821,7 +906,7 @@ class AccountProjector {
           },
         },
       },
-      { upsert: true }
+      { upsert: true },
     );
   }
 }
@@ -835,7 +920,7 @@ class ConsistencyValidator {
     // MySQL command model
     const mysqlBalance = await mysql.query(
       "SELECT SUM(balance) as total FROM accounts WHERE customer_id = ?",
-      [customerId]
+      [customerId],
     );
 
     // MongoDB query model

@@ -132,7 +132,7 @@ db.createCollection("transactions_ts", {
     granularity: "seconds",
     // bucketMaxSpanSeconds is not a valid option in MongoDB 6.0+
     // Bucket size is automatically managed by MongoDB
-    bucketRoundingSeconds: 60,  // Optional: Round bucket boundaries
+    bucketRoundingSeconds: 60, // Optional: Round bucket boundaries
   },
   expireAfterSeconds: 63072000, // 2 years retention
 });
@@ -156,7 +156,7 @@ const changeStream = db.transactions.watch(
   {
     fullDocument: "updateLookup",
     resumeAfter: null, // Set resume token for recovery
-  }
+  },
 );
 
 // Process change events
@@ -229,7 +229,7 @@ sh.shardCollection(
   { customer_id: 1 },
   {
     presplitHashedZones: true,
-  }
+  },
 );
 
 // Create zones for data sovereignty
@@ -243,14 +243,14 @@ sh.updateZoneKeyRange(
   "banking.customers",
   { customer_id: MinKey },
   { customer_id: 500000000 },
-  "EU"
+  "EU",
 );
 
 sh.updateZoneKeyRange(
   "banking.customers",
   { customer_id: 500000000 },
   { customer_id: MaxKey },
-  "US"
+  "US",
 );
 
 // Check sharding status
@@ -339,7 +339,7 @@ try {
   await customersCollection.updateOne(
     { customer_id: 123 },
     { $inc: { total_transactions: 1 } },
-    { session }
+    { session },
   );
 
   // Insert transaction in shard 2
@@ -349,7 +349,7 @@ try {
       amount: 1000,
       timestamp: new Date(),
     },
-    { session }
+    { session },
   );
 
   // Commit transaction
@@ -539,7 +539,7 @@ const duration = Date.now() - start;
 print(
   `Inserted 1000 documents in ${duration}ms (${
     (1000 / duration) * 1000
-  } ops/sec)`
+  } ops/sec)`,
 );
 
 // Test read performance

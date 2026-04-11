@@ -65,7 +65,8 @@ export class LedgerService {
          VALUES (?, ?, ?, 'DEBIT', ?)`,
         [idempotencyKey, accountId, amountMinor, correlationId],
       );
-      const affectedInsert = (ins as import("mysql2").ResultSetHeader).affectedRows;
+      const affectedInsert = (ins as import("mysql2").ResultSetHeader)
+        .affectedRows;
       if (affectedInsert === 0) {
         await conn.rollback();
         return false;
@@ -151,7 +152,10 @@ export class LedgerController {
 
   @Post("debit/:idempotencyKey")
   @UseGuards(IdempotencyGuard)
-  async debit(@Param("idempotencyKey") idempotencyKey: string, @Body() body: DebitDto) {
+  async debit(
+    @Param("idempotencyKey") idempotencyKey: string,
+    @Body() body: DebitDto,
+  ) {
     const applied = await this.ledger.debitIfAbsent(
       BigInt(body.accountId),
       BigInt(body.amountMinor),
@@ -167,7 +171,7 @@ export class LedgerController {
 
 ## Roles
 
-| Role | Notes |
-| ---- | ----- |
-| **Language Maintainer** | Aligns Nest major versions with Node LTS. |
-| **Security Reviewer** | Validates authz on controllers and PII logging policies. |
+| Role                    | Notes                                                    |
+| ----------------------- | -------------------------------------------------------- |
+| **Language Maintainer** | Aligns Nest major versions with Node LTS.                |
+| **Security Reviewer**   | Validates authz on controllers and PII logging policies. |

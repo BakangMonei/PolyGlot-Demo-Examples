@@ -237,7 +237,7 @@ db.customers.createIndex(
       preferences: 1,
       metadata: 1,
     },
-  }
+  },
 );
 
 // Time-series collection indexes
@@ -1406,10 +1406,10 @@ print("\nCustomer Count: " + db.customers.countDocuments());
 print("Transaction Count: " + db.transactions_ts.countDocuments());
 print(
   "Transaction Relationships Count: " +
-    db.transaction_relationships.countDocuments()
+    db.transaction_relationships.countDocuments(),
 );
 print(
-  "Analytics Records Count: " + db.customer_analytics_monthly.countDocuments()
+  "Analytics Records Count: " + db.customer_analytics_monthly.countDocuments(),
 );
 
 print("\n=== Sample Customer Query ===");

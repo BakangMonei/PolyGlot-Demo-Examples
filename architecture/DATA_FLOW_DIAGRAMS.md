@@ -2,6 +2,58 @@
 
 ## Consistency Boundaries and Data Flow
 
+## Enterprise Transaction Lifecycle (API Gateway → Polyglot → MySQL + MongoDB + Kafka)
+
+This flow applies to **`POST /transactions`** (see `shared/openapi/financial-api.yaml`): the browser never touches databases; only the **API Gateway** and authorized backend services do.
+
+```mermaid
+sequenceDiagram
+  participant SPA as React SPA
+  participant GW as API Gateway
+  participant SVC as Account Service
+  participant MY as MySQL SoR
+  participant MG as MongoDB SoE
+  participant K as Kafka
+
+  SPA->>GW: POST /transactions + JWT + X-Correlation-Id
+  GW->>GW: Validate OpenAPI + JWT + rate limit
+  GW->>SVC: Forward (preserves correlation id)
+  SVC->>MY: BEGIN; insert txn + ledger_entries; COMMIT
+  SVC->>MG: Upsert transaction_documents / compliance_records
+  SVC->>K: Produce transactions.created (headers: correlation id)
+  SVC-->>GW: 201 + transaction id
+  GW-->>SPA: JSON response
+```
+
+**Idempotency:** clients SHOULD send `Idempotency-Key`; gateway forwards it so services can dedupe at MySQL (`transactions` unique constraint) per `migrations/` playbook.
+
+## Fraud Detection Flow (Kafka + MongoDB + Python ML)
+
+```mermaid
+flowchart LR
+  K1[transactions.created] --> C1[Java/Kotlin/Scala consumers]
+  C1 --> PY[Python fraud scoring FastAPI]
+  PY --> K2[fraud.alerts]
+  K2 --> MG[(Mongo risk features)]
+  MG --> GW[Alerts API via BFF]
+```
+
+Change streams on `compliance_records` (see `mongodb/`) can fan out secondary processing; producers publish **`fraud.alerts`** with bounded retries and **DLQ** (`fraud.alerts.DLQ`) per `/messages/README.md`.
+
+## Reporting Flow (`GET /reports/{accountId}`)
+
+```mermaid
+flowchart TB
+  GW[API Gateway] --> SVC[Reporting-capable service e.g. C# compliance or Scala analytics]
+  SVC --> MY[(MySQL: accounts, transactions, ledger_entries)]
+  SVC --> MG[(MongoDB: customer_profiles, transaction_documents)]
+  SVC --> S3[AWS S3: PDF/CSV artifact]
+  SVC --> DDB[DynamoDB: audit pointer / job status]
+  SVC --> GW
+```
+
+Statements are **materialized in S3**; the API returns a **signed URL** or job id (implementation-specific per service README).
+
 ## Overview
 
 This document provides data flow diagrams showing how data moves through the hybrid database system, including consistency boundaries and event flows.

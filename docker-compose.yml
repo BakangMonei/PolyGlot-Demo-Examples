@@ -1,0 +1,127 @@
+# Financial Platform — local enterprise stack (no hardcoded secrets: use .env)
+name: financial-platform
+
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-financial_root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-financial_platform}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-p${MYSQL_ROOT_PASSWORD:-financial_root}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  flyway:
+    image: flyway/flyway:10-alpine
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      FLYWAY_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-financial_platform}
+      FLYWAY_USER: root
+      FLYWAY_PASSWORD: ${MYSQL_ROOT_PASSWORD:-financial_root}
+    volumes:
+      - ./mysql/flyway/sql:/flyway/sql
+    command: migrate
+
+  mongo:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+  account-go:
+    build:
+      context: ./polyglot/go/account-service
+    environment:
+      MYSQL_DSN: root:${MYSQL_ROOT_PASSWORD:-financial_root}@tcp(mysql:3306)/${MYSQL_DATABASE:-financial_platform}?parseTime=true
+      PORT: "7101"
+    ports:
+      - "7101:7101"
+    depends_on:
+      flyway:
+        condition: service_completed_successfully
+
+  api:
+    build:
+      context: ./api
+    environment:
+      PORT: "8080"
+      UPSTREAM_ACCOUNT_SERVICE_URL: http://account-go:7101
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-in-production-min-32-chars!!}
+      REQUIRE_JWT: ${REQUIRE_JWT:-false}
+      LOG_LEVEL: info
+    ports:
+      - "8080:8080"
+    depends_on:
+      - account-go
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
+volumes:
+  mysql_data:
+  mongo_data:

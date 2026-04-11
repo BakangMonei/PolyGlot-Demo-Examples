@@ -95,25 +95,21 @@
 ### MySQL Team (5 Engineers)
 
 1. **Team Lead** (Senior DRE)
-
    - Architecture decisions
    - Team coordination
    - Escalation point
 
 2. **Performance Engineer** (Senior DRE)
-
    - Query optimization
    - Index tuning
    - Performance monitoring
 
 3. **Replication Specialist** (DRE)
-
    - Multi-source replication
    - Group replication
    - Failover procedures
 
 4. **Sharding Specialist** (DRE)
-
    - Vitess/ProxySQL
    - Shard management
    - Resharding operations
@@ -126,25 +122,21 @@
 ### MongoDB Team (5 Engineers)
 
 1. **Team Lead** (Senior DRE)
-
    - Architecture decisions
    - Team coordination
    - Escalation point
 
 2. **Performance Engineer** (Senior DRE)
-
    - Query optimization
    - Index tuning
    - Aggregation pipelines
 
 3. **Sharding Specialist** (DRE)
-
    - Shard management
    - Zone sharding
    - Rebalancing
 
 4. **Change Streams Specialist** (DRE)
-
    - Event-driven architecture
    - Change stream optimization
    - CQRS implementation
@@ -157,24 +149,20 @@
 ### Platform Team (5 Engineers)
 
 1. **Team Lead** (Senior SRE)
-
    - Platform architecture
    - Team coordination
 
 2. **Observability Engineer** (SRE)
-
    - Prometheus/Thanos
    - Grafana dashboards
    - OpenTelemetry/Jaeger
 
 3. **Automation Engineer** (SRE)
-
    - Infrastructure automation
    - CI/CD pipelines
    - Self-service tooling
 
 4. **Reliability Engineer** (SRE)
-
    - Incident response
    - Post-mortems
    - Reliability improvements

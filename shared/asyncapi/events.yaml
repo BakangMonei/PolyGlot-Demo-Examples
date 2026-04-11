@@ -1,0 +1,87 @@
+asyncapi: 2.6.0
+info:
+  title: Financial Platform Events
+  version: 1.0.0
+  description: >
+    Kafka topics for transaction lifecycle, account updates, audit, and fraud.
+    All messages SHOULD carry header `x-correlation-id` (string) for tracing.
+defaultContentType: application/json
+servers:
+  production:
+    url: kafka://kafka:9092
+    protocol: kafka
+    description: Local docker-compose broker
+channels:
+  transactions.created:
+    publish:
+      message:
+        $ref: "#/components/messages/TransactionCreated"
+    subscribe:
+      message:
+        $ref: "#/components/messages/TransactionCreated"
+  accounts.updated:
+    publish:
+      message:
+        $ref: "#/components/messages/AccountUpdated"
+  audit.events:
+    publish:
+      message:
+        $ref: "#/components/messages/AuditEvent"
+  fraud.alerts:
+    publish:
+      message:
+        $ref: "#/components/messages/FraudAlert"
+  fraud.alerts.DLQ:
+    subscribe:
+      message:
+        $ref: "#/components/messages/FraudAlert"
+components:
+  messages:
+    TransactionCreated:
+      name: TransactionCreated
+      title: Transaction posted
+      payload:
+        type: object
+        required:
+          [event_type, transaction_id, account_id, amount_minor, occurred_at]
+        properties:
+          event_type: { const: "transactions.created" }
+          transaction_id: { type: string }
+          account_id: { type: string }
+          amount_minor: { type: integer }
+          currency: { type: string }
+          occurred_at: { type: string, format: date-time }
+          correlation_id: { type: string, format: uuid }
+    AccountUpdated:
+      name: AccountUpdated
+      payload:
+        type: object
+        required: [account_id, balance_minor, occurred_at]
+        properties:
+          account_id: { type: string }
+          balance_minor: { type: integer }
+          occurred_at: { type: string, format: date-time }
+    AuditEvent:
+      name: AuditEvent
+      payload:
+        type: object
+        required: [event_type, actor, action, resource, occurred_at]
+        properties:
+          event_type: { const: "audit.events" }
+          actor: { type: string }
+          action: { type: string }
+          resource: { type: string }
+          occurred_at: { type: string, format: date-time }
+          correlation_id: { type: string, format: uuid }
+    FraudAlert:
+      name: FraudAlert
+      payload:
+        type: object
+        required: [score, account_id, occurred_at]
+        properties:
+          account_id: { type: string }
+          score: { type: number, minimum: 0, maximum: 100 }
+          occurred_at: { type: string, format: date-time }
+          reasons:
+            type: array
+            items: { type: string }

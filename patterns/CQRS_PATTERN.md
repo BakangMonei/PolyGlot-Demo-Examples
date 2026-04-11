@@ -91,11 +91,11 @@ class AccountCommandHandler {
           commandData.customerId,
           commandData.accountType,
           commandData.initialBalance || 0,
-        ]
+        ],
       );
 
       const accountResult = await mysql.query(
-        "SELECT @account_id as account_id, @account_number as account_number"
+        "SELECT @account_id as account_id, @account_number as account_number",
       );
       const { account_id, account_number } = accountResult[0];
 
@@ -138,13 +138,13 @@ class AccountCommandHandler {
              available_balance = available_balance + ?,
              updated_at = NOW()
          WHERE account_id = ?`,
-        [commandData.amount, commandData.amount, commandData.accountId]
+        [commandData.amount, commandData.amount, commandData.accountId],
       );
 
       // Get updated balance
       const account = await mysql.query(
         `SELECT balance, available_balance FROM accounts WHERE account_id = ?`,
-        [commandData.accountId]
+        [commandData.accountId],
       );
 
       // Emit event
@@ -181,7 +181,7 @@ class AccountCommandHandler {
         commandData.customer_id,
         commandData.command_type,
         JSON.stringify(commandData),
-      ]
+      ],
     );
 
     return result.insertId;
@@ -199,7 +199,7 @@ class AccountCommandHandler {
         JSON.stringify(eventData.event_data),
         eventData.aggregate_id,
         eventData.aggregate_type,
-      ]
+      ],
     );
 
     // Publish to event bus for projection
@@ -217,7 +217,7 @@ class AccountCommandHandler {
       `UPDATE account_commands 
        SET status = 'COMPLETED', processed_at = NOW() 
        WHERE command_id = ?`,
-      [commandId]
+      [commandId],
     );
   }
 
@@ -226,7 +226,7 @@ class AccountCommandHandler {
       `UPDATE account_commands 
        SET status = 'FAILED', error_message = ? 
        WHERE command_id = ?`,
-      [errorMessage, commandId]
+      [errorMessage, commandId],
     );
   }
 }
@@ -287,11 +287,11 @@ class EventProjector {
         $set: {
           updated_at: new Date(),
         },
-      }
+      },
     );
 
     console.log(
-      `[Projector] Account ${account_id} created for customer ${customer_id}`
+      `[Projector] Account ${account_id} created for customer ${customer_id}`,
     );
   }
 
@@ -312,11 +312,11 @@ class EventProjector {
           "accounts.$.last_transaction": new Date(),
           updated_at: new Date(),
         },
-      }
+      },
     );
 
     console.log(
-      `[Projector] Balance updated for account ${account_id}: ${balance}`
+      `[Projector] Balance updated for account ${account_id}: ${balance}`,
     );
   }
 
@@ -355,11 +355,11 @@ class EventProjector {
           "transactions.last_transaction_date": new Date(timestamp),
           updated_at: new Date(),
         },
-      }
+      },
     );
 
     console.log(
-      `[Projector] Transaction ${transaction_id} recorded for customer ${customer_id}`
+      `[Projector] Transaction ${transaction_id} recorded for customer ${customer_id}`,
     );
   }
 
@@ -368,7 +368,7 @@ class EventProjector {
 
     if (!projector) {
       console.warn(
-        `[Projector] No projector found for event type: ${event.event_type}`
+        `[Projector] No projector found for event type: ${event.event_type}`,
       );
       return;
     }
@@ -381,7 +381,7 @@ class EventProjector {
 
       if (processed) {
         console.log(
-          `[Projector] Event ${event.event_uuid} already processed, skipping`
+          `[Projector] Event ${event.event_uuid} already processed, skipping`,
         );
         return;
       }
@@ -398,7 +398,7 @@ class EventProjector {
     } catch (error) {
       console.error(
         `[Projector] Error processing event ${event.event_uuid}:`,
-        error
+        error,
       );
       throw error;
     }
@@ -452,7 +452,7 @@ class AccountQueryHandler {
           behavior: 1,
           products: 1,
         },
-      }
+      },
     );
   }
 
@@ -532,7 +532,7 @@ class ConsistencyValidator {
       `SELECT account_id, balance, available_balance 
        FROM accounts 
        WHERE customer_id = ?`,
-      [customerId]
+      [customerId],
     );
 
     // Get data from MongoDB (query model)
@@ -545,7 +545,7 @@ class ConsistencyValidator {
 
     for (const mysqlAccount of mysqlAccounts) {
       const mongoAccount = mongoCustomer?.accounts?.find(
-        (acc) => acc.account_id === mysqlAccount.account_id
+        (acc) => acc.account_id === mysqlAccount.account_id,
       );
 
       if (!mongoAccount) {
@@ -556,7 +556,7 @@ class ConsistencyValidator {
         });
       } else if (
         Math.abs(
-          parseFloat(mysqlAccount.balance) - parseFloat(mongoAccount.balance)
+          parseFloat(mysqlAccount.balance) - parseFloat(mongoAccount.balance),
         ) > 0.01
       ) {
         inconsistencies.push({
@@ -565,7 +565,7 @@ class ConsistencyValidator {
           mysql_balance: mysqlAccount.balance,
           mongo_balance: mongoAccount.balance,
           difference: Math.abs(
-            parseFloat(mysqlAccount.balance) - parseFloat(mongoAccount.balance)
+            parseFloat(mysqlAccount.balance) - parseFloat(mongoAccount.balance),
           ),
         });
       }
@@ -597,7 +597,7 @@ class ConsistencyValidator {
          WHERE aggregate_id IN (
            SELECT account_id FROM accounts WHERE customer_id = ?
          )`,
-        [customerId]
+        [customerId],
       );
       return { system: "mysql", last_event_id: result[0].last_event_id || 0 };
     } else {
@@ -620,7 +620,7 @@ class ConsistencyValidator {
 
   async triggerReconciliation(customerId) {
     console.log(
-      `[ConsistencyValidator] Triggering reconciliation for customer ${customerId}`
+      `[ConsistencyValidator] Triggering reconciliation for customer ${customerId}`,
     );
 
     // Re-project all events for this customer
@@ -630,7 +630,7 @@ class ConsistencyValidator {
        INNER JOIN accounts a ON e.aggregate_id = a.account_id
        WHERE a.customer_id = ?
        ORDER BY e.event_id ASC`,
-      [customerId]
+      [customerId],
     );
 
     const projector = require("./event-projector");
@@ -646,7 +646,7 @@ class ConsistencyValidator {
     }
 
     console.log(
-      `[ConsistencyValidator] Reconciliation completed for customer ${customerId}`
+      `[ConsistencyValidator] Reconciliation completed for customer ${customerId}`,
     );
   }
 }

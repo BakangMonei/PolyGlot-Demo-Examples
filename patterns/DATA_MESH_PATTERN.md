@@ -247,7 +247,7 @@ class DataMeshGovernance {
     // Validate quality metrics
     const qualityMetrics = await this.calculateQualityMetrics(
       dataProductName,
-      data
+      data,
     );
     const qualityContract = contract.contract.quality;
 
@@ -297,7 +297,7 @@ class DataMeshGovernance {
     // Calculate completeness (percentage of required fields)
     const completeness = this.calculateCompleteness(
       data,
-      product.spec.contracts[0].schema
+      product.spec.contracts[0].schema,
     );
 
     // Calculate accuracy (cross-validation with source systems)
@@ -324,7 +324,7 @@ class DataMeshGovernance {
   calculateCompleteness(data, schema) {
     const requiredFields = this.getRequiredFields(schema);
     const presentFields = requiredFields.filter(
-      (field) => data[field] !== undefined && data[field] !== null
+      (field) => data[field] !== undefined && data[field] !== null,
     );
     return (presentFields.length / requiredFields.length) * 100;
   }
@@ -358,7 +358,7 @@ class DataMeshGovernance {
     if (dataProductName === "payments-data-product" && data.payment_id) {
       const sourcePayment = await mysql.query(
         `SELECT amount FROM payments WHERE payment_id = ?`,
-        [data.payment_id]
+        [data.payment_id],
       );
 
       if (sourcePayment.length > 0) {
@@ -497,7 +497,7 @@ async function checkAccess(req, res, next) {
   const hasAccess = await governance.checkAccess(
     userId,
     dataProduct,
-    permission
+    permission,
   );
 
   if (!hasAccess) {
@@ -524,7 +524,7 @@ router.get("/:dataProduct/data/:recordId", checkAccess, async (req, res) => {
     const table = product.spec.sources.mysql.tables[0];
     const result = await mysql.query(
       `SELECT * FROM ${table} WHERE ${table}_id = ?`,
-      [recordId]
+      [recordId],
     );
     data = result[0];
   } else if (product.spec.sources.mongodb) {
@@ -538,7 +538,7 @@ router.get("/:dataProduct/data/:recordId", checkAccess, async (req, res) => {
     await governance.validateDataContract(
       dataProduct,
       product.spec.contracts[0].name,
-      data
+      data,
     );
   } catch (error) {
     return res.status(500).json({ error: error.message });

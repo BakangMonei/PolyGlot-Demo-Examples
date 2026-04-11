@@ -97,14 +97,12 @@ This capacity planning model projects resource requirements for the hybrid datab
 #### Year 1
 
 - **Primary Nodes**: 3 (one per region)
-
   - CPU: 64 cores
   - RAM: 512 GB
   - Storage: 60 TB SSD
   - Network: 25 Gbps
 
 - **Replica Nodes**: 6 (2 per region)
-
   - CPU: 32 cores
   - RAM: 256 GB
   - Storage: 60 TB SSD
@@ -133,14 +131,12 @@ This capacity planning model projects resource requirements for the hybrid datab
 #### Year 1
 
 - **Shard Nodes**: 9 (3 shards × 3 nodes)
-
   - CPU: 32 cores
   - RAM: 256 GB
   - Storage: 120 TB SSD
   - Network: 25 Gbps
 
 - **Config Servers**: 3
-
   - CPU: 16 cores
   - RAM: 128 GB
   - Storage: 1 TB SSD

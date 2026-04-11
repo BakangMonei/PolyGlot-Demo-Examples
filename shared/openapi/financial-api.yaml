@@ -1,0 +1,184 @@
+openapi: 3.1.0
+info:
+  title: Financial Platform API
+  version: 1.0.0
+  description: >
+    Unified contract for API Gateway and polyglot Financial Account Services.
+    All requests MUST include `X-Correlation-Id` (UUID) for tracing; gateway generates if absent.
+servers:
+  - url: https://api.example.com/v1
+    description: Production
+  - url: http://localhost:8080/v1
+    description: Local gateway
+tags:
+  - name: Accounts
+  - name: Transactions
+  - name: Reports
+  - name: Health
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Liveness/readiness
+      operationId: getHealth
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    const: ok
+                  service:
+                    type: string
+  /accounts/{id}:
+    get:
+      tags: [Accounts]
+      summary: Fetch account with balance
+      operationId: getAccountById
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^[a-zA-Z0-9_-]{1,64}$"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /transactions:
+    post:
+      tags: [Transactions]
+      summary: Create transaction (SoR + event + documents)
+      operationId: createTransaction
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 8
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTransactionRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409":
+          description: Idempotent replay (same Idempotency-Key)
+  /reports/{accountId}:
+    get:
+      tags: [Reports]
+      summary: Generate or fetch statement metadata for account
+      operationId: getReportForAccount
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, pdf, csv]
+            default: json
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Report descriptor or inline JSON
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportDescriptor"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      schema:
+        type: string
+        format: uuid
+  responses:
+    Unauthorized:
+      description: Unauthorized
+    NotFound:
+      description: Not found
+    BadRequest:
+      description: Validation error
+  schemas:
+    Account:
+      type: object
+      required: [id, currency, balance_minor, status]
+      properties:
+        id: { type: string }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        balance_minor: { type: integer, format: int64 }
+        status: { type: string, enum: [active, frozen, closed] }
+    CreateTransactionRequest:
+      type: object
+      required: [account_id, amount_minor, type]
+      properties:
+        account_id: { type: string }
+        amount_minor: { type: integer, format: int64 }
+        type: { type: string, enum: [debit, credit, transfer] }
+        counterparty_account_id:
+          type: string
+          nullable: true
+        narrative:
+          type: string
+          maxLength: 512
+    Transaction:
+      type: object
+      required: [id, account_id, amount_minor, type, status]
+      properties:
+        id: { type: string }
+        account_id: { type: string }
+        amount_minor: { type: integer, format: int64 }
+        type: { type: string }
+        status: { type: string, enum: [posted, pending, rejected] }
+    ReportDescriptor:
+      type: object
+      properties:
+        account_id: { type: string }
+        artifact_url:
+          type: string
+          description: Presigned S3 URL when available
+          nullable: true
+        generated_at:
+          type: string
+          format: date-time

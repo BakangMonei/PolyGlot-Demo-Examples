@@ -49,7 +49,7 @@ public final class LedgerGrpcService extends LedgerGrpc.LedgerImplBase {
 
 ## Roles
 
-| Role | Notes |
-| ---- | ----- |
-| **API / Contract Owner** | Approves `.proto` changes; see [`../ROLES.md`](../ROLES.md). |
-| **Language Maintainer** | Keeps generated package paths and grpc-java versions current. |
+| Role                     | Notes                                                         |
+| ------------------------ | ------------------------------------------------------------- |
+| **API / Contract Owner** | Approves `.proto` changes; see [`../ROLES.md`](../ROLES.md).  |
+| **Language Maintainer**  | Keeps generated package paths and grpc-java versions current. |

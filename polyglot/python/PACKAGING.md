@@ -17,10 +17,10 @@ banking_ledger/
 
 ## Roles
 
-| Role | Notes |
-| ---- | ----- |
-| **Language Maintainer** | Chooses `ruff` + `mypy` strictness for generated SQL helpers. |
-| **SRE** | Ensures Gunicorn/Uvicorn worker count matches MySQL pool budget. |
+| Role                    | Notes                                                            |
+| ----------------------- | ---------------------------------------------------------------- |
+| **Language Maintainer** | Chooses `ruff` + `mypy` strictness for generated SQL helpers.    |
+| **SRE**                 | Ensures Gunicorn/Uvicorn worker count matches MySQL pool budget. |
 
 ## Configuration
 

@@ -2,10 +2,10 @@
 
 ## Recommended Packages
 
-| Database | Package |
-| -------- | ------- |
-| MySQL | [MySqlConnector](https://github.com/mysql-net/MySqlConnector) |
-| MongoDB | [MongoDB.Driver](https://www.mongodb.com/docs/drivers/csharp/) |
+| Database | Package                                                        |
+| -------- | -------------------------------------------------------------- |
+| MySQL    | [MySqlConnector](https://github.com/mysql-net/MySqlConnector)  |
+| MongoDB  | [MongoDB.Driver](https://www.mongodb.com/docs/drivers/csharp/) |
 
 ## MySqlConnector + Idempotent Debit (`INSERT IGNORE`)
 

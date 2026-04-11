@@ -71,14 +71,14 @@ class TransferSaga {
     // Compensating transaction for account debit
     this.compensators.set(SagaEvents.ACCOUNT_DEBITED, async (event) => {
       console.log(
-        `Compensating: Rolling back debit for account ${event.from_account_id}`
+        `Compensating: Rolling back debit for account ${event.from_account_id}`,
       );
       await mysql.query(
         `UPDATE accounts 
          SET balance = balance + ?, 
              available_balance = available_balance + ?
          WHERE account_id = ?`,
-        [event.amount, event.amount, event.from_account_id]
+        [event.amount, event.amount, event.from_account_id],
       );
 
       // Log compensation
@@ -86,35 +86,35 @@ class TransferSaga {
         `INSERT INTO saga_compensations 
          (saga_id, event_type, compensated_at, details) 
          VALUES (?, ?, NOW(), ?)`,
-        [event.saga_id, SagaEvents.ACCOUNT_DEBITED, JSON.stringify(event)]
+        [event.saga_id, SagaEvents.ACCOUNT_DEBITED, JSON.stringify(event)],
       );
     });
 
     // Compensating transaction for account credit
     this.compensators.set(SagaEvents.ACCOUNT_CREDITED, async (event) => {
       console.log(
-        `Compensating: Rolling back credit for account ${event.to_account_id}`
+        `Compensating: Rolling back credit for account ${event.to_account_id}`,
       );
       await mysql.query(
         `UPDATE accounts 
          SET balance = balance - ?, 
              available_balance = available_balance - ?
          WHERE account_id = ?`,
-        [event.amount, event.amount, event.to_account_id]
+        [event.amount, event.amount, event.to_account_id],
       );
 
       await mysql.query(
         `INSERT INTO saga_compensations 
          (saga_id, event_type, compensated_at, details) 
          VALUES (?, ?, NOW(), ?)`,
-        [event.saga_id, SagaEvents.ACCOUNT_CREDITED, JSON.stringify(event)]
+        [event.saga_id, SagaEvents.ACCOUNT_CREDITED, JSON.stringify(event)],
       );
     });
 
     // Compensating transaction for customer view update
     this.compensators.set(SagaEvents.CUSTOMER_VIEW_UPDATED, async (event) => {
       console.log(
-        `Compensating: Rolling back customer view update for customer ${event.customer_id}`
+        `Compensating: Rolling back customer view update for customer ${event.customer_id}`,
       );
       await mongodb.collection("customers").updateOne(
         { customer_id: event.customer_id },
@@ -126,7 +126,7 @@ class TransferSaga {
         },
         {
           arrayFilters: [{ "account.account_id": event.account_id }],
-        }
+        },
       );
     });
   }
@@ -148,12 +148,12 @@ class TransferSaga {
 
       // Step 1: Debit source account (MySQL)
       console.log(
-        `[Saga ${sagaId}] Step 1: Debiting account ${transferRequest.from_account_id}`
+        `[Saga ${sagaId}] Step 1: Debiting account ${transferRequest.from_account_id}`,
       );
       const debitResult = await this.debitAccount(
         transferRequest.from_account_id,
         transferRequest.amount,
-        sagaId
+        sagaId,
       );
 
       sagaState.steps.push({
@@ -174,12 +174,12 @@ class TransferSaga {
 
       // Step 2: Credit destination account (MySQL)
       console.log(
-        `[Saga ${sagaId}] Step 2: Crediting account ${transferRequest.to_account_id}`
+        `[Saga ${sagaId}] Step 2: Crediting account ${transferRequest.to_account_id}`,
       );
       const creditResult = await this.creditAccount(
         transferRequest.to_account_id,
         transferRequest.amount,
-        sagaId
+        sagaId,
       );
 
       sagaState.steps.push({
@@ -199,12 +199,12 @@ class TransferSaga {
 
       // Step 3: Update customer view (MongoDB)
       console.log(
-        `[Saga ${sagaId}] Step 3: Updating customer view for ${transferRequest.customer_id}`
+        `[Saga ${sagaId}] Step 3: Updating customer view for ${transferRequest.customer_id}`,
       );
       const viewUpdateResult = await this.updateCustomerView(
         transferRequest.customer_id,
         transferRequest,
-        sagaId
+        sagaId,
       );
 
       sagaState.steps.push({
@@ -259,7 +259,7 @@ class TransferSaga {
     const existingTransaction = await mysql.query(
       `SELECT * FROM saga_transactions 
        WHERE saga_id = ? AND event_type = ?`,
-      [sagaId, SagaEvents.ACCOUNT_DEBITED]
+      [sagaId, SagaEvents.ACCOUNT_DEBITED],
     );
 
     if (existingTransaction.length > 0) {
@@ -274,7 +274,7 @@ class TransferSaga {
            available_balance = available_balance - ?,
            updated_at = NOW()
        WHERE account_id = ? AND available_balance >= ?`,
-      [amount, amount, accountId, amount]
+      [amount, amount, accountId, amount],
     );
 
     if (result.affectedRows === 0) {
@@ -286,7 +286,7 @@ class TransferSaga {
       `INSERT INTO saga_transactions 
        (saga_id, event_type, account_id, amount, created_at) 
        VALUES (?, ?, ?, ?, NOW())`,
-      [sagaId, SagaEvents.ACCOUNT_DEBITED, accountId, amount]
+      [sagaId, SagaEvents.ACCOUNT_DEBITED, accountId, amount],
     );
 
     return { account_id: accountId, amount, status: "DEBITED" };
@@ -297,7 +297,7 @@ class TransferSaga {
     const existingTransaction = await mysql.query(
       `SELECT * FROM saga_transactions 
        WHERE saga_id = ? AND event_type = ?`,
-      [sagaId, SagaEvents.ACCOUNT_CREDITED]
+      [sagaId, SagaEvents.ACCOUNT_CREDITED],
     );
 
     if (existingTransaction.length > 0) {
@@ -312,7 +312,7 @@ class TransferSaga {
            available_balance = available_balance + ?,
            updated_at = NOW()
        WHERE account_id = ?`,
-      [amount, amount, accountId]
+      [amount, amount, accountId],
     );
 
     // Record saga transaction
@@ -320,7 +320,7 @@ class TransferSaga {
       `INSERT INTO saga_transactions 
        (saga_id, event_type, account_id, amount, created_at) 
        VALUES (?, ?, ?, ?, NOW())`,
-      [sagaId, SagaEvents.ACCOUNT_CREDITED, accountId, amount]
+      [sagaId, SagaEvents.ACCOUNT_CREDITED, accountId, amount],
     );
 
     return { account_id: accountId, amount, status: "CREDITED" };
@@ -335,7 +335,7 @@ class TransferSaga {
 
     if (existingUpdate) {
       console.log(
-        `[Saga ${sagaId}] Customer view update already processed, skipping`
+        `[Saga ${sagaId}] Customer view update already processed, skipping`,
       );
       return existingUpdate;
     }
@@ -355,7 +355,7 @@ class TransferSaga {
       },
       {
         arrayFilters: [{ "account.account_id": transferRequest.to_account_id }],
-      }
+      },
     );
 
     // Record saga update
@@ -371,7 +371,7 @@ class TransferSaga {
 
   async compensate(sagaId, completedSteps) {
     console.log(
-      `[Saga ${sagaId}] Starting compensation for ${completedSteps.length} steps`
+      `[Saga ${sagaId}] Starting compensation for ${completedSteps.length} steps`,
     );
 
     // Compensate in reverse order
@@ -382,7 +382,7 @@ class TransferSaga {
       if (compensator) {
         try {
           console.log(
-            `[Saga ${sagaId}] Compensating step ${step.step}: ${step.event}`
+            `[Saga ${sagaId}] Compensating step ${step.step}: ${step.event}`,
           );
           await compensator({
             saga_id: sagaId,
@@ -391,7 +391,7 @@ class TransferSaga {
         } catch (error) {
           console.error(
             `[Saga ${sagaId}] Compensation failed for step ${step.step}:`,
-            error
+            error,
           );
           // Continue with other compensations even if one fails
         }
@@ -424,7 +424,7 @@ class DeadLetterQueue {
     const eventId = event.event_id || generateId();
 
     console.log(
-      `[DLQ] Handling failed event ${eventId}, retry ${retryCount}/${this.maxRetries}`
+      `[DLQ] Handling failed event ${eventId}, retry ${retryCount}/${this.maxRetries}`,
     );
 
     if (retryCount >= this.maxRetries) {
@@ -440,7 +440,7 @@ class DeadLetterQueue {
     // Calculate exponential backoff
     const backoffMs = Math.min(
       this.baseBackoffMs * Math.pow(2, retryCount),
-      this.maxBackoffMs
+      this.maxBackoffMs,
     );
 
     console.log(`[DLQ] Retrying event ${eventId} after ${backoffMs}ms`);

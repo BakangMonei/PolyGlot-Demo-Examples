@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/event-transaction-created.json",
+  "title": "TransactionCreated",
+  "type": "object",
+  "required": [
+    "event_type",
+    "transaction_id",
+    "account_id",
+    "amount_minor",
+    "occurred_at"
+  ],
+  "properties": {
+    "event_type": { "const": "transactions.created" },
+    "transaction_id": { "type": "string", "minLength": 1 },
+    "account_id": { "type": "string", "minLength": 1 },
+    "amount_minor": { "type": "integer" },
+    "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "correlation_id": { "type": "string", "format": "uuid" }
+  },
+  "additionalProperties": true
+}

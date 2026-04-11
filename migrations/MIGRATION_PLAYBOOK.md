@@ -138,7 +138,7 @@ async function updateBalance(accountId, amount) {
      SET balance = balance + ?, 
          balance_new = balance_new + ?
      WHERE account_id = ?`,
-    [amount, amount, accountId]
+    [amount, amount, accountId],
   );
 }
 ```
@@ -199,7 +199,7 @@ async function archiveOldTransactions() {
      WHERE transaction_date < ? 
      ORDER BY transaction_id 
      LIMIT 10000`,
-    [cutoffDate]
+    [cutoffDate],
   );
 
   // Archive to MongoDB
@@ -214,7 +214,7 @@ async function archiveOldTransactions() {
       `UPDATE transactions 
        SET archived = 1 
        WHERE transaction_id = ?`,
-      [transaction.transaction_id]
+      [transaction.transaction_id],
     );
   }
 
@@ -406,7 +406,7 @@ class MigrationRunner {
     for (const migration of migrations) {
       try {
         console.log(
-          `Running migration ${migration.version}: ${migration.description}`
+          `Running migration ${migration.version}: ${migration.description}`,
         );
         await this.applyMigration(migration);
         console.log(`Migration ${migration.version} completed`);
@@ -425,7 +425,7 @@ class MigrationRunner {
     await mysql.query(
       `INSERT INTO schema_migrations (version, description, applied_at, applied_by, status) 
        VALUES (?, ?, NOW(), USER(), 'APPLIED')`,
-      [migration.version, migration.description]
+      [migration.version, migration.description],
     );
   }
 
@@ -438,7 +438,7 @@ class MigrationRunner {
       `UPDATE schema_migrations 
        SET status = 'ROLLED_BACK' 
        WHERE version = ?`,
-      [migration.version]
+      [migration.version],
     );
   }
 

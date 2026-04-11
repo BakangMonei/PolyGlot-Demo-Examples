@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/event-fraud-alert.json",
+  "title": "FraudAlert",
+  "type": "object",
+  "required": ["event_type", "account_id", "score", "occurred_at"],
+  "properties": {
+    "event_type": { "const": "fraud.alerts" },
+    "account_id": { "type": "string" },
+    "score": { "type": "number", "minimum": 0, "maximum": 100 },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "reasons": { "type": "array", "items": { "type": "string" } },
+    "correlation_id": { "type": "string", "format": "uuid" }
+  },
+  "additionalProperties": true
+}

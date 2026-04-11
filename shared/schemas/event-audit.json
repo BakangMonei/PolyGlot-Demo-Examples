@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/event-audit.json",
+  "title": "AuditEvent",
+  "type": "object",
+  "required": ["event_type", "actor", "action", "resource", "occurred_at"],
+  "properties": {
+    "event_type": { "const": "audit.events" },
+    "actor": { "type": "string" },
+    "action": { "type": "string" },
+    "resource": { "type": "string" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "correlation_id": { "type": "string", "format": "uuid" },
+    "metadata": { "type": "object" }
+  },
+  "additionalProperties": true
+}

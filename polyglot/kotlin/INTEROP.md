@@ -25,7 +25,7 @@ class LedgerFacade(private val javaLedger: LedgerRepository) {
 
 ## Roles
 
-| Role | Notes |
-| ---- | ----- |
-| **Language Maintainer** | Documents null-safety at Java boundaries (`@Nullable` / `@NonNull`). |
-| **SRE** | Ensures combined services do not double pool connections (one Hikari pool per process). |
+| Role                    | Notes                                                                                   |
+| ----------------------- | --------------------------------------------------------------------------------------- |
+| **Language Maintainer** | Documents null-safety at Java boundaries (`@Nullable` / `@NonNull`).                    |
+| **SRE**                 | Ensures combined services do not double pool connections (one Hikari pool per process). |

@@ -190,7 +190,7 @@ class ABTestingFramework {
     if (!experiment) {
       const variant = await this.assignExperiment(
         customerId,
-        `model_${modelName}`
+        `model_${modelName}`,
       );
       return variant;
     }
@@ -248,7 +248,7 @@ class BlockchainAnchoring {
       `SELECT transaction_id, audit_hash 
        FROM transactions 
        WHERE DATE(transaction_date) = ?`,
-      [date]
+      [date],
     );
 
     // Create Merkle tree
@@ -293,7 +293,7 @@ class BlockchainAnchoring {
     // Verify transaction is in Merkle tree
     const transaction = await mysql.query(
       `SELECT audit_hash FROM transactions WHERE transaction_id = ?`,
-      [transactionId]
+      [transactionId],
     );
 
     const leaf = Buffer.from(transaction[0].audit_hash, "hex");
@@ -303,14 +303,14 @@ class BlockchainAnchoring {
       merkleProof,
       leaf,
       root,
-      crypto.createHash("sha256")
+      crypto.createHash("sha256"),
     );
   }
 
   async getMerkleRoot(transactionId) {
     const transaction = await mysql.query(
       `SELECT transaction_date FROM transactions WHERE transaction_id = ?`,
-      [transactionId]
+      [transactionId],
     );
 
     const date = transaction[0].transaction_date.toISOString().split("T")[0];
@@ -430,7 +430,7 @@ class ZeroKnowledgeProofs {
     const { proof, publicSignals } = await snarkjs.groth16.fullProve(
       input,
       circuit.wasm,
-      circuit.zkey
+      circuit.zkey,
     );
 
     return {
@@ -517,7 +517,7 @@ class PostQuantumCrypto {
       // Encrypt with post-quantum algorithm
       const pqEncrypted = await this.encryptWithPostQuantum(
         this.postQuantumPublicKey,
-        decrypted
+        decrypted,
       );
 
       // Store post-quantum encrypted data
