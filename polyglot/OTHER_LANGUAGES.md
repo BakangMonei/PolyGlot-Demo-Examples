@@ -188,7 +188,7 @@ export class LedgerRepository {
     accountId: bigint,
     amountMinor: bigint,
     idempotencyKey: string,
-    correlationId: string
+    correlationId: string,
   ): Promise<boolean> {
     const conn = await this.pool.getConnection();
     try {
@@ -197,7 +197,7 @@ export class LedgerRepository {
         `INSERT IGNORE INTO ledger_operations
            (idempotency_key, account_id, amount_minor, op_type, correlation_id)
          VALUES (?, ?, ?, 'DEBIT', ?)`,
-        [idempotencyKey, accountId, amountMinor, correlationId]
+        [idempotencyKey, accountId, amountMinor, correlationId],
       );
       if (ins.affectedRows === 0) {
         await conn.rollback();
@@ -210,7 +210,7 @@ export class LedgerRepository {
              available_balance = available_balance - ?
          WHERE account_id = ?
            AND available_balance >= ?`,
-        [amountMinor, amountMinor, accountId, amountMinor]
+        [amountMinor, amountMinor, accountId, amountMinor],
       );
       if (upd.affectedRows !== 1) {
         await conn.rollback();
@@ -235,7 +235,7 @@ export async function appendTransfer(
   customerId: string,
   transferId: string,
   amountMinor: number,
-  currency: string
+  currency: string,
 ) {
   const col = mongo.db("banking_engagement").collection("customers");
   await col.updateOne(
@@ -250,7 +250,7 @@ export async function appendTransfer(
         },
       },
       $set: { last_updated_at: new Date() },
-    }
+    },
   );
 }
 ```
@@ -320,9 +320,9 @@ class LedgerRepository(private val jdbcUrl: String, private val user: String, pr
 
 ## When to Choose Which
 
-| Runtime | Strength in this architecture |
-| ------- | ----------------------------- |
-| Go | Small binaries, excellent concurrency for tailers and edge proxies |
-| Python | Rapid internal tooling, ML adjacency for fraud scoring services |
+| Runtime    | Strength in this architecture                                      |
+| ---------- | ------------------------------------------------------------------ |
+| Go         | Small binaries, excellent concurrency for tailers and edge proxies |
+| Python     | Rapid internal tooling, ML adjacency for fraud scoring services    |
 | TypeScript | Shared types with BFFs, rich JSON ergonomics for customer 360 APIs |
-| Kotlin | JVM interop with existing Java banking cores, coroutine clarity |
+| Kotlin     | JVM interop with existing Java banking cores, coroutine clarity    |

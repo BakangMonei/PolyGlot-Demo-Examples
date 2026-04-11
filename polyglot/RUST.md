@@ -2,12 +2,12 @@
 
 ## Recommended Crates
 
-| Concern | Crate |
-| ------- | ----- |
-| MySQL | `sqlx` (runtime + compile-time checks with `offline` mode in CI) |
-| MongoDB | `mongodb` (official), BSON via `bson` |
-| Async runtime | `tokio` |
-| Serialization | `serde`, `serde_json` |
+| Concern       | Crate                                                            |
+| ------------- | ---------------------------------------------------------------- |
+| MySQL         | `sqlx` (runtime + compile-time checks with `offline` mode in CI) |
+| MongoDB       | `mongodb` (official), BSON via `bson`                            |
+| Async runtime | `tokio`                                                          |
+| Serialization | `serde`, `serde_json`                                            |
 
 ## 1. `sqlx` Pool + Idempotent Debit
 
