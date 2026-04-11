@@ -1,72 +1,72 @@
 # Hybrid Database Architecture for Global Banking Platform
 
-## Executive Summary
+## Who this repository is for
 
-This repository contains the complete architecture, implementation, and operational documentation for a production-ready hybrid database system serving 50M+ customers with 5,000+ transactions per second. The system combines MySQL 8.0 (System of Record) and MongoDB 6.0+ Enterprise (System of Engagement) to deliver sub-50ms P99 latency while ensuring absolute data consistency across heterogeneous databases.
+This project is **documentation for builders**: architects, principal engineers, and platform teams who will **design and implement** a production system—not a single shipped monolith you must deploy as-is. It describes a **financial-grade, hybrid MySQL + MongoDB** architecture, consistency patterns, security and operations posture, and **per-language guidance**. Optional folders (for example `shared/` contract samples, `api/` or `frontend/` sketches, `docker-compose.yml`) exist only as **reference material**; your organization owns the real codebase, pipelines, and cloud accounts.
 
-## Architecture Overview
+**Start here:** [BUILDERS_GUIDE.md](./BUILDERS_GUIDE.md)
+
+## Executive summary (documentation scope)
+
+The docs describe a fault-tolerant, compliance-oriented platform serving very large customer and transaction volumes, with **MySQL 8.x as system of record** and **MongoDB 7.x-class** capabilities as system of engagement, coordinated by event-driven and saga-style patterns. Targets (latency, TPS, RTO/RPO) appear in [architecture/TECHNICAL_ARCHITECTURE.md](./architecture/TECHNICAL_ARCHITECTURE.md), [performance/BENCHMARK_REPORT.md](./performance/BENCHMARK_REPORT.md), and [EXECUTIVE_SUMMARY.md](./EXECUTIVE_SUMMARY.md)—use them as **design targets** when you size your own build.
+
+## Architecture overview (conceptual)
 
 ### Tier 1: MySQL 8.0 (System of Record)
 
-- Multi-source replication with semi-synchronous replication
-- Vitess/ProxySQL sharding with customer_id-based partitioning
-- InnoDB Cluster with Group Replication
-- MySQL HeatWave for analytical workloads
-- Row-Level Security (RLS) and dynamic data masking
-- Transparent Data Encryption (TDE)
+- Replication and high-availability topologies as documented  
+- Sharding / routing patterns (Vitess, ProxySQL, or equivalent)  
+- ACID financial ledgers, migrations, and audit expectations  
 
-### Tier 2: MongoDB 6.0+ (System of Engagement)
+### Tier 2: MongoDB 7.x-class (System of Engagement)
 
-- Time-series collections for real-time transaction streaming
-- Change streams with resume tokens
-- Client-side field-level encryption (CSFLE)
-- Graph traversal queries for fraud detection
-- Zone sharding for data sovereignty
-- Atlas Search with custom analyzers
+- Document models, time-series and search patterns where applicable  
+- Change streams and engagement-side projections  
 
-## Key Features
+## Key themes in the documentation
 
-- **Fault Tolerance**: Zero-downtime migrations, automatic failover (RTO: 4s, RPO: 0s)
-- **Regulatory Compliance**: GDPR/CCPA, PCI-DSS, SOC 2 Type II, FedRAMP
-- **Data Consistency**: Saga pattern, CQRS, Data Mesh with eventual consistency
-- **Performance**: Sub-50ms P99 latency, 100K read ops/sec, 50K write ops/sec
-- **Security**: Multi-layer encryption, RBAC/ABAC, just-in-time access
-- **Observability**: Prometheus, OpenTelemetry, Grafana with SLA tracking
+- **Fault tolerance and DR** — `disaster-recovery/`, RTO/RPO narratives  
+- **Regulatory alignment** — `security/`, mapping you must complete for your jurisdiction  
+- **Data consistency** — `patterns/` (Saga, CQRS, Data Mesh)  
+- **Performance and capacity** — `performance/`, `capacity-planning/`  
+- **Observability** — `observability/`  
+- **Polyglot clients and service notes** — `polyglot/`  
 
-## Repository Structure
+## Repository structure (documentation map)
 
 ```
-├── architecture/          # Architecture documentation and diagrams
-├── mysql/                # MySQL 8.0 configurations and schemas
-├── mongodb/              # MongoDB 6.0+ configurations and schemas
-├── patterns/             # Data consistency patterns (Saga, CQRS, Data Mesh)
-├── security/             # Security configurations and compliance
-├── observability/        # Monitoring, logging, and alerting
-├── disaster-recovery/    # DR runbooks and procedures
-├── migrations/           # Migration playbooks and scripts
-├── capacity-planning/    # Capacity models and projections
-├── innovation/           # ML, blockchain, quantum readiness
-├── operations/           # Team topology and training programs
-└── polyglot/             # Per-language folders (java, rust, csharp, …) + shared contracts
+├── BUILDERS_GUIDE.md     # How to use this repo as an implementer
+├── architecture/         # C4-style narrative, data flows, technical architecture
+├── shared/               # Sample OpenAPI / AsyncAPI / proto / JSON Schema (contracts to copy)
+├── api/                  # Optional gateway sketch (not required to run)
+├── frontend/             # Optional SPA sketch
+├── messages/             # Kafka topic and producer documentation / samples
+├── aws/                  # AWS integration notes and Terraform sketches (if present)
+├── mysql/                # MySQL setup, schemas, Flyway-style SQL examples
+├── mongodb/              # MongoDB setup and schema examples
+├── patterns/             # Saga, CQRS, Data Mesh
+├── security/             # Security and compliance documentation
+├── observability/        # Monitoring, tracing, alerting guidance
+├── disaster-recovery/    # DR runbooks
+├── migrations/           # Migration playbooks
+├── capacity-planning/    # Capacity models
+├── innovation/           # Roadmap-style topics
+├── operations/           # Team topology, K8s/Helm samples, CI templates
+└── polyglot/             # Per-language implementation notes + roles
 ```
 
-## Quick Start
+## Quick start (for readers, not a single deploy button)
 
-1. Review the [Architecture Document](./architecture/TECHNICAL_ARCHITECTURE.md)
-2. Configure MySQL using [MySQL Setup Guide](./mysql/SETUP.md)
-3. Configure MongoDB using [MongoDB Setup Guide](./mongodb/SETUP.md)
-4. Deploy consistency patterns from [Patterns Directory](./patterns/)
-5. Set up observability using [Observability Guide](./observability/SETUP.md)
-6. Review [Polyglot client guides](./polyglot/README.md) for Java, Rust, C#, and other runtimes
+1. Read [BUILDERS_GUIDE.md](./BUILDERS_GUIDE.md).  
+2. Read [architecture/TECHNICAL_ARCHITECTURE.md](./architecture/TECHNICAL_ARCHITECTURE.md).  
+3. Follow [mysql/SETUP.md](./mysql/SETUP.md) and [mongodb/SETUP.md](./mongodb/SETUP.md) when you provision **your** environments.  
+4. Apply [patterns/](./patterns/) in **your** services and event pipelines.  
+5. Use [observability/SETUP.md](./observability/SETUP.md) as a checklist for what to instrument.  
+6. Use [polyglot/README.md](./polyglot/README.md) when you assign languages to bounded contexts.
 
-## Success Criteria
+## Success criteria
 
-- ✅ Zero unplanned downtime in first year
-- ✅ 99.9% of queries under 100ms at peak load
-- ✅ 30% reduction in total cost of ownership
-- ✅ Zero critical vulnerabilities in audits
-- ✅ 100% regulatory requirement coverage
-- ✅ 2+ patent submissions from architecture patterns
+The documentation supports teams aiming at outcomes such as: high availability, strict financial consistency on the SoR side, controlled eventual consistency on the SoE side, auditability, and defensible security and DR stories. Exact SLAs and certification are **your** responsibility after implementation.
 
 ## License
 
