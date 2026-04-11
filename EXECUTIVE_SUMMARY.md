@@ -6,6 +6,10 @@
 
 Design and deliver a fault-tolerant, regulatory-compliant hybrid database system serving 50M+ customers with 5,000+ transactions per second, maintaining sub-50ms P99 latency while ensuring absolute data consistency across MySQL 8.0 and MongoDB 6.0+ Enterprise databases.
 
+## How to read this repository
+
+This monorepo is primarily **documentation and design collateral for teams who will implement** the platform in their own environments and codebases. Narratives, targets, and patterns below describe **intended outcomes**; optional sample folders (contracts under `shared/`, sketches under `api/` or `frontend/`, etc.) are **implementation hints**, not a substitute for your security, compliance, and SDLC sign-off. See [BUILDERS_GUIDE.md](./BUILDERS_GUIDE.md).
+
 ## Key Achievements
 
 ### Performance Excellence

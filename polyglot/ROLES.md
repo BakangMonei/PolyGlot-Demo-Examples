@@ -1,6 +1,25 @@
 # Polyglot Area: Roles and Responsibilities
 
-Use these roles when extending or reviewing language-specific guides under `polyglot/<language>/`. One person may wear multiple hats; the point is to make **accountabilities explicit** in design reviews and on-call handoffs.
+These roles apply when **authoring or reviewing documentation** (and illustrative snippets) under `polyglot/<language>/`. They help a **builder** team know who signs off on driver choices, security, and SRE alignment—they do not replace your org’s job titles or RACI matrix.
+
+## Which “domain” each language folder emphasizes (example mapping)
+
+| Language folder | Typical bounded context in a large build (example) |
+| --------------- | ---------------------------------------------------- |
+| **go** | Edge gateways, sidecars, high-concurrency I/O, S3 upload workers |
+| **rust** | Hot-path validators, low-latency workers |
+| **java** | Core banking services, Spring-centric integration |
+| **kotlin** | JVM services, Ktor BFFs, Kafka consumers |
+| **scala** | Stream-heavy analytics / reporting |
+| **python** | ML fraud scoring, internal tooling, data science handoff |
+| **typescript** | BFFs, Node gateways, browser-adjacent APIs |
+| **elixir** | Soft-real-time notifications and channels |
+| **ruby** | Admin / ops APIs (e.g. Rails) |
+| **php** | Legacy adapters (e.g. Laravel) |
+| **csharp** | Compliance reporting, .NET integration |
+| **dart** | Mobile backends (e.g. Dart Frog) when approved by security |
+
+Reassign domains to match **your** bounded contexts; the table is a planning aid, not a rule. One person may wear several of the roles below; the goal is explicit accountability in reviews and on-call handoffs.
 
 ## Role: Polyglot Architect
 
@@ -27,7 +46,7 @@ Use these roles when extending or reviewing language-specific guides under `poly
 
 ## Role: API / Contract Owner
 
-- Owns `polyglot/shared/GRPC_TRANSFER_PROTO.md` and protobuf package versioning (`banking.transfer.v1`, `v2`, …).
+- Owns repository-wide contracts under **`/shared/`** (OpenAPI, AsyncAPI, proto, JSON Schema) and `polyglot/shared/GRPC_TRANSFER_PROTO.md` where gRPC examples live next to polyglot docs.
 - Coordinates breaking-change detection in CI for generated stubs across Java, Rust, C#, Go, etc.
 
 ## How to Use This in PRs

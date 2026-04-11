@@ -1,6 +1,6 @@
 # Builders Guide — Documentation for Implementers
 
-This repository is **documentation-first**: it is meant for **people who will build** a financial-grade, polyglot, hybrid-database platform. It collects **architecture, contracts, schemas, patterns, and operational guidance**. Anything that looks like an application tree (for example `api/`, `frontend/`, `docker-compose.yml`, sample services under `polyglot/*/account-service/`) should be read as **illustrative reference material**, not as a maintained product codebase unless your own program explicitly adopts it.
+This repository is **documentation-first**: it is meant for **people who will build** a financial-grade, polyglot, hybrid-database platform. It collects **architecture, contracts, schemas, patterns, and operational guidance**. Anything that looks like an application tree (for example `api/`, `frontend/`, `docker-compose.yml`, sample services under `polyglot/*/account-service/`) should be read as **illustrative reference material**, not as a maintained product codebase unless your own program explicitly adopts it. See [docker-compose.README.md](./docker-compose.README.md) for how the compose file is positioned.
 
 ## What you should treat as authoritative
 

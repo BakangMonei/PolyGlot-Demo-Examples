@@ -1,6 +1,6 @@
 # Shared Contract Layer
 
-Single source of truth for **HTTP** (OpenAPI), **events** (AsyncAPI + JSON Schema), and **gRPC** (Protobuf) used by the API Gateway and polyglot services.
+**Documentation and copy-paste contracts** for teams building their own gateway and services: **OpenAPI 3.1**, **AsyncAPI 2.x**, **Protobuf**, and **JSON Schema** samples. Treat files here as the **specification reference** you port into your own repositories; the optional `api/` sketch in this monorepo is only an example of how validation might align with these files—not a required runtime.
 
 | Asset        | Path                                                                                                   |
 | ------------ | ------------------------------------------------------------------------------------------------------ |
@@ -9,11 +9,11 @@ Single source of truth for **HTTP** (OpenAPI), **events** (AsyncAPI + JSON Schem
 | Protobuf     | [proto/transactions.proto](./proto/transactions.proto), [proto/accounts.proto](./proto/accounts.proto) |
 | JSON Schema  | [schemas/](./schemas/)                                                                                 |
 
-## Usage
+## Usage (for builders)
 
-- **API Gateway** (`/api`) loads OpenAPI for validation and proxy path mapping.
-- **Kafka producers** validate payloads against `schemas/*.json` before publish.
-- **gRPC** services code-generate from `proto/` into language-specific modules (see `polyglot/*/account-service` READMEs).
+- Your **API gateway** (Fastify, Kong, Envoy + WASM, etc.) should load or import the OpenAPI spec and enforce request/response contracts in **your** pipeline.  
+- Your **Kafka producers** should validate payloads against `schemas/*.json` (or generated models) before publish.  
+- Your **gRPC** services should code-generate from `proto/` in **your** repos; see language notes under `polyglot/` for ecosystem hints.
 
 ## Governance
 
