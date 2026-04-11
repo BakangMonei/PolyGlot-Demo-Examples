@@ -1,6 +1,4 @@
-# Scala 3 + Pekko HTTP + JDBC / Slick
-
-Scala services often sit next to JVM-based cores. This example uses **Pekko HTTP** (Apache Pekko) and plain **JDBC** for clarity; Slick or Doobie can replace the JDBC block without changing HTTP semantics.
+# Scala 3 + Pekko HTTP + JDBC
 
 ## build.sbt (Illustrative)
 
@@ -74,8 +72,7 @@ end LedgerRepo
 object Routes:
   def apply(repo: LedgerRepo)(using ActorSystem[?], ExecutionContext): Route =
     (post & path("debit" / Segment)) { idempotencyKey =>
-      entity(as[String]) { body =>
-        // Parse JSON with circe/jsoniter in real services
+      entity(as[String]) { _ =>
         complete(repo.debitIfAbsent(1L, 1L, idempotencyKey, "corr"))
       }
     }
@@ -83,7 +80,7 @@ object Routes:
 
 ## MongoDB Engagement
 
-Use the **MongoDB Java Driver** from Scala (it is often simpler than wrapping a Scala-native driver for advanced features like change streams). Alternatively, **mongo-scala-driver** if your security reviews approve the stack.
+Use the **MongoDB Java Driver** from Scala for advanced features, or **mongo-scala-driver** if security approves.
 
 ```scala
 import com.mongodb.client.model.Filters
@@ -106,4 +103,4 @@ def appendTransfer(coll: com.mongodb.client.MongoCollection[Document], customerI
 ## Notes
 
 - Prefer **`blocking`** execution contexts for JDBC under Pekko HTTP unless you adopt a fully non-blocking database client.
-- Align JSON error models with your API gateway standards documented in `security/SECURITY_CONFIG.md`.
+- Align JSON error models with `security/SECURITY_CONFIG.md`.

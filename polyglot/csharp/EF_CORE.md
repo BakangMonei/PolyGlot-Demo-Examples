@@ -1,6 +1,6 @@
-# C# with EF Core (Pomelo MySQL Provider)
+# C#: EF Core (Pomelo MySQL Provider)
 
-EF Core is appropriate when migrations, LINQ, and model-first workflows dominate. For **hot-path OLTP** with extreme latency targets, many teams still drop to Dapper or raw ADO.NET as shown in [CSHARP.md](./CSHARP.md).
+EF Core suits migrations and LINQ-heavy services. For **lowest-latency OLTP**, prefer [ADONET.md](./ADONET.md).
 
 ## DbContext Sketch
 
@@ -89,7 +89,7 @@ public sealed class EfLedgerRepository
             catch (DbUpdateException)
             {
                 await tx.RollbackAsync(ct);
-                return false; // duplicate idempotency key
+                return false;
             }
 
             var affected = await _db.Database.ExecuteSqlInterpolatedAsync(
@@ -115,8 +115,8 @@ public sealed class EfLedgerRepository
 }
 ```
 
-> For **true** `INSERT IGNORE` semantics via EF alone, prefer raw SQL (`ExecuteSqlRaw`) for the insert leg, or catch duplicate key on `SaveChanges` as shown.
+> For strict `INSERT IGNORE` semantics without exception flow, use `ExecuteSqlRaw` for the insert leg.
 
-## MongoDB with EF Core?
+## MongoDB
 
-EF Core targets relational stores. For MongoDB, continue using **MongoDB.Driver** (see [CSHARP.md](./CSHARP.md)) or the official EF Core MongoDB provider when its feature set matches your governance requirements.
+EF Core targets relational stores. For MongoDB use **MongoDB.Driver** ([ADONET.md](./ADONET.md)) or the official EF Core MongoDB provider when it meets governance requirements.

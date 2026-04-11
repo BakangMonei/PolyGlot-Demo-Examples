@@ -1,14 +1,13 @@
-# C# / .NET Clients for Hybrid MySQL + MongoDB
+# C#: MySqlConnector + MongoDB.Driver
 
 ## Recommended Packages
 
-| Database       | Package                                                        | Notes                           |
-| -------------- | -------------------------------------------------------------- | ------------------------------- |
-| MySQL          | [MySqlConnector](https://github.com/mysql-net/MySqlConnector)  | High-performance ADO.NET driver |
-| MongoDB        | [MongoDB.Driver](https://www.mongodb.com/docs/drivers/csharp/) | Official driver                 |
-| ORM (optional) | EF Core Pomelo provider                                        | Migrations-heavy teams          |
+| Database | Package |
+| -------- | ------- |
+| MySQL | [MySqlConnector](https://github.com/mysql-net/MySqlConnector) |
+| MongoDB | [MongoDB.Driver](https://www.mongodb.com/docs/drivers/csharp/) |
 
-## 1. MySqlConnector + Idempotent Debit
+## MySqlConnector + Idempotent Debit (`INSERT IGNORE`)
 
 ```csharp
 using System.Data;
@@ -25,9 +24,7 @@ public sealed class LedgerRepository
         _connectionString = connectionString;
     }
 
-    /// <summary>
-    /// Returns true if debit applied; false if idempotency key already processed.
-    /// </summary>
+    /// <summary>Returns true if debit applied; false if idempotency key already processed.</summary>
     public async Task<bool> DebitIfAbsentAsync(
         long accountId,
         long amountMinor,
@@ -40,7 +37,7 @@ public sealed class LedgerRepository
         await using var tx = await conn.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
 
         const string insertOp = """
-            INSERT INTO ledger_operations
+            INSERT IGNORE INTO ledger_operations
               (idempotency_key, account_id, amount_minor, op_type, correlation_id)
             VALUES (@k, @a, @m, 'DEBIT', @c)
             """;
@@ -52,16 +49,8 @@ public sealed class LedgerRepository
             ins.Parameters.AddWithValue("@m", amountMinor);
             ins.Parameters.AddWithValue("@c", correlationId);
 
-            try
-            {
-                var inserted = await ins.ExecuteNonQueryAsync(ct);
-                if (inserted == 0)
-                {
-                    await tx.RollbackAsync(ct);
-                    return false;
-                }
-            }
-            catch (MySqlException ex) when (ex.ErrorCode == 1062) // ER_DUP_ENTRY
+            var inserted = await ins.ExecuteNonQueryAsync(ct);
+            if (inserted == 0)
             {
                 await tx.RollbackAsync(ct);
                 return false;
@@ -94,7 +83,7 @@ public sealed class LedgerRepository
 }
 ```
 
-## 2. MongoDB.Driver Projection
+## MongoDB.Driver Projection
 
 ```csharp
 using MongoDB.Bson;
@@ -134,7 +123,7 @@ public sealed class Customer360Repository
 }
 ```
 
-## 3. ASP.NET Core Minimal API Wiring
+## ASP.NET Core Minimal API Wiring
 
 ```csharp
 using MongoDB.Driver;
@@ -178,7 +167,7 @@ app.Run();
 public sealed record DebitRequest(long AccountId, long AmountMinor, string CorrelationId);
 ```
 
-## 4. Change Streams (`IAsyncEnumerable`)
+## Change Streams (`IAsyncEnumerable`)
 
 ```csharp
 using MongoDB.Bson;
@@ -193,14 +182,13 @@ public static class TransactionTail
 
         await foreach (var change in cursor.ToAsyncEnumerable().WithCancellation(ct))
         {
-            // Process change.FullDocument, persist change.ResumeToken before side effects
             _ = change.ResumeToken;
         }
     }
 }
 ```
 
-## .NET Observability
+## Observability
 
-- Use **OpenTelemetry.Instrumentation.SqlClient** for ADO.NET spans.
-- Add **MongoDB.Driver.Core.Extensions.DiagnosticSources** (or built-in tracing in newer driver versions) so Mongo operations appear in the same trace as HTTP ingress.
+- **OpenTelemetry.Instrumentation.SqlClient** for ADO.NET spans.
+- MongoDB driver diagnostic listeners so Mongo calls share trace IDs with HTTP ingress.

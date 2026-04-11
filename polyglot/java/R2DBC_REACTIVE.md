@@ -1,4 +1,4 @@
-# Java Reactive Stack (R2DBC + Reactive MongoDB)
+# Java: R2DBC + Reactive MongoDB
 
 Use when gateways require **non-blocking end-to-end** threads (WebFlux, virtual-thread hybrids, or high fan-out I/O).
 
@@ -20,8 +20,6 @@ Use when gateways require **non-blocking end-to-end** threads (WebFlux, virtual-
 ## R2DBC Idempotent Debit (Transactional Operator)
 
 ```java
-import io.r2dbc.spi.Connection;
-import io.r2dbc.spi.ConnectionFactory;
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Mono;
@@ -114,4 +112,4 @@ public class ReactiveCustomer360Repository {
 ## Guidance
 
 - Keep **saga orchestration** state in MySQL or a durable log; reactive pipelines should not rely on in-memory-only saga graphs.
-- Prefer **bounded concurrency** (`flatMap(..., 32)`) when fanning out to MongoDB to avoid overload during incident traffic spikes.
+- Prefer **bounded concurrency** (`flatMap(..., 32)`) when fanning out to MongoDB.

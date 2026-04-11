@@ -47,7 +47,7 @@ This repository contains the complete architecture, implementation, and operatio
 ├── capacity-planning/    # Capacity models and projections
 ├── innovation/           # ML, blockchain, quantum readiness
 ├── operations/           # Team topology and training programs
-└── polyglot/             # Java, Rust, C#, and multi-language client examples
+└── polyglot/             # Per-language folders (java, rust, csharp, …) + shared contracts
 ```
 
 ## Quick Start

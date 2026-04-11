@@ -1,6 +1,4 @@
-# NestJS + TypeScript Services
-
-NestJS gives **structured modules**, **dependency injection**, and **guards** that map cleanly to banking boundaries (commands vs queries, idempotency, auth).
+# NestJS: Modules, Guards, MySQL + Mongo
 
 ## Module Layout
 
@@ -8,16 +6,16 @@ NestJS gives **structured modules**, **dependency injection**, and **guards** th
 src/
   ledger/
     ledger.module.ts
-    ledger.service.ts      # MySQL command path
+    ledger.service.ts
     ledger.controller.ts
   engagement/
     engagement.module.ts
-    engagement.service.ts  # MongoDB projection path
+    engagement.service.ts
   common/
     idempotency.guard.ts
 ```
 
-## Idempotency Guard (HTTP Header)
+## Idempotency Guard
 
 ```typescript
 import {
@@ -36,13 +34,13 @@ export class IdempotencyGuard implements CanActivate {
     if (!key || key.length < 8) {
       throw new BadRequestException("Idempotency-Key header required");
     }
-    (req as any).idempotencyKey = key;
+    (req as { idempotencyKey?: string }).idempotencyKey = key;
     return true;
   }
 }
 ```
 
-## Ledger Service (mysql2/promise pool)
+## Ledger Service (mysql2 pool)
 
 ```typescript
 import { Injectable } from "@nestjs/common";
@@ -67,8 +65,7 @@ export class LedgerService {
          VALUES (?, ?, ?, 'DEBIT', ?)`,
         [idempotencyKey, accountId, amountMinor, correlationId],
       );
-      const affectedInsert = (ins as import("mysql2").ResultSetHeader)
-        .affectedRows;
+      const affectedInsert = (ins as import("mysql2").ResultSetHeader).affectedRows;
       if (affectedInsert === 0) {
         await conn.rollback();
         return false;
@@ -99,7 +96,7 @@ export class LedgerService {
 }
 ```
 
-## Engagement Service (MongoDB)
+## Engagement Service (mongoose connection)
 
 ```typescript
 import { Injectable } from "@nestjs/common";
@@ -135,17 +132,10 @@ export class EngagementService {
 }
 ```
 
-## Controller Wiring
+## Controller
 
 ```typescript
-import {
-  Body,
-  Controller,
-  Headers,
-  Param,
-  Post,
-  UseGuards,
-} from "@nestjs/common";
+import { Body, Controller, Param, Post, UseGuards } from "@nestjs/common";
 import { IdempotencyGuard } from "../common/idempotency.guard";
 import { LedgerService } from "./ledger.service";
 
@@ -161,10 +151,7 @@ export class LedgerController {
 
   @Post("debit/:idempotencyKey")
   @UseGuards(IdempotencyGuard)
-  async debit(
-    @Param("idempotencyKey") idempotencyKey: string,
-    @Body() body: DebitDto,
-  ) {
+  async debit(@Param("idempotencyKey") idempotencyKey: string, @Body() body: DebitDto) {
     const applied = await this.ledger.debitIfAbsent(
       BigInt(body.accountId),
       BigInt(body.amountMinor),
@@ -176,4 +163,11 @@ export class LedgerController {
 }
 ```
 
-> For production, prefer **outbox** publication after MySQL commit instead of calling MongoDB directly from the same HTTP request.
+> Production: prefer **outbox** after MySQL commit instead of calling MongoDB in the same HTTP request.
+
+## Roles
+
+| Role | Notes |
+| ---- | ----- |
+| **Language Maintainer** | Aligns Nest major versions with Node LTS. |
+| **Security Reviewer** | Validates authz on controllers and PII logging policies. |

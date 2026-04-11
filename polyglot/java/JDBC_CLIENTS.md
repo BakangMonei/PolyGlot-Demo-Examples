@@ -1,14 +1,14 @@
-# Java Clients for Hybrid MySQL + MongoDB
+# Java: JDBC, HikariCP, MongoDB Driver
 
 ## Stack Options
 
-| Layer   | Common choices                                                  |
-| ------- | --------------------------------------------------------------- |
-| MySQL   | JDBC + **HikariCP**, jOOQ, Spring Data JDBC, Hibernate          |
+| Layer | Common choices |
+| ----- | -------------- |
+| MySQL | JDBC + **HikariCP**, jOOQ, Spring Data JDBC, Hibernate |
 | MongoDB | **MongoDB Java Driver** (sync or reactive), Spring Data MongoDB |
-| Async   | Virtual threads (Java 21+), Project Reactor, JDK `HttpClient`   |
+| Async | Virtual threads (Java 21+), Project Reactor, JDK `HttpClient` |
 
-## 1. HikariCP + JDBC (System of Record)
+## HikariCP + JDBC (System of Record)
 
 ```java
 import com.zaxxer.hikari.HikariConfig;
@@ -108,7 +108,7 @@ public final class LedgerRepository {
 }
 ```
 
-## 2. MongoDB Java Driver (Customer 360 Projection)
+## MongoDB Java Driver (Customer 360 Projection)
 
 ```java
 import com.mongodb.client.MongoClient;
@@ -148,7 +148,7 @@ public final class Customer360Repository {
 }
 ```
 
-## 3. Spring Boot Style (Outline)
+## Spring Boot Style (Outline)
 
 ```java
 import org.springframework.stereotype.Service;
@@ -181,11 +181,11 @@ public class TransferCommandService {
 }
 ```
 
-## 4. Observability (OpenTelemetry JDBC)
+## Observability
 
-Wrap `DataSource` with OpenTelemetry instrumentation (agent or manual wrappers) so JDBC spans inherit W3C trace context from upstream gateways. Correlate `correlation_id` with span attributes `banking.correlation_id`.
+Wrap `DataSource` with OpenTelemetry instrumentation so JDBC spans inherit W3C trace context. Add span attribute `banking.correlation_id` from the command.
 
 ## Operational Notes
 
 - Use **read/write split** at the pool level (separate Hikari pools for replicas) for reporting paths.
-- For **change stream** consumers, prefer a dedicated microservice with backpressure (bounded queue) and resume tokens persisted in MySQL or a small metadata collection.
+- For **change stream** consumers, prefer a dedicated microservice with backpressure and resume tokens persisted durably.

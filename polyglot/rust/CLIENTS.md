@@ -1,19 +1,19 @@
-# Rust Clients for Hybrid MySQL + MongoDB
+# Rust: sqlx + mongodb + tokio
 
 ## Recommended Crates
 
-| Concern       | Crate                                                            |
-| ------------- | ---------------------------------------------------------------- |
-| MySQL         | `sqlx` (runtime + compile-time checks with `offline` mode in CI) |
-| MongoDB       | `mongodb` (official), BSON via `bson`                            |
-| Async runtime | `tokio`                                                          |
-| Serialization | `serde`, `serde_json`                                            |
+| Concern | Crate |
+| ------- | ----- |
+| MySQL | `sqlx` (runtime + compile-time checks with `offline` mode in CI) |
+| MongoDB | `mongodb` (official), BSON via `bson` |
+| Async runtime | `tokio` |
+| Serialization | `serde`, `serde_json` |
 
-## 1. `sqlx` Pool + Idempotent Debit
+## `sqlx` Pool + Idempotent Debit
 
 ```rust
 use sqlx::mysql::MySqlPoolOptions;
-use sqlx::{Executor, MySql, MySqlPool, Transaction};
+use sqlx::{MySql, MySqlPool, Transaction};
 
 pub async fn pool_from_env() -> Result<MySqlPool, sqlx::Error> {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
@@ -89,7 +89,7 @@ impl<'a> Ledger<'a> {
 }
 ```
 
-## 2. MongoDB Projection Update
+## MongoDB Projection Update
 
 ```rust
 use bson::{doc, DateTime};
@@ -134,21 +134,20 @@ impl Customer360 {
 }
 ```
 
-## 3. Change Stream Consumer (Sketch)
+## Change Stream Consumer (Sketch)
 
 ```rust
+use bson::Document;
 use futures::StreamExt;
 use mongodb::options::ChangeStreamOptions;
 use mongodb::Collection;
 
-pub async fn tail_transactions(collection: Collection<bson::Document>) -> anyhow::Result<()> {
+pub async fn tail_transactions(collection: Collection<Document>) -> anyhow::Result<()> {
     let opts = ChangeStreamOptions::builder().build();
     let mut cs = collection.watch(None, opts).await?;
 
     while let Some(evt) = cs.next().await {
         let evt = evt?;
-        // Deserialize evt.full_document, publish to Kafka / call projector
-        // Persist resume token durably before side effects
         let _token = evt.id;
     }
     Ok(())
@@ -159,4 +158,4 @@ pub async fn tail_transactions(collection: Collection<bson::Document>) -> anyhow
 
 - Enable **`sqlx` offline mode** in CI so builds do not require a live database.
 - Prefer **`try_join!`** for independent reads; never parallelize two writes to the same saga without ordering rules.
-- For **CPU-bound** JSON/BSON transforms inside hot paths, isolate with `tokio::task::spawn_blocking` when profiling shows contention.
+- For **CPU-bound** BSON work in hot paths, consider `tokio::task::spawn_blocking` when profiling shows contention.

@@ -1,8 +1,8 @@
-# Dart / Flutter Clients (Server or BFF)
+# Dart: MySQL + Mongo (Illustrative)
 
-Mobile and embedded banking surfaces often use **Dart**. For server-side access to MySQL and MongoDB, use `mysql_client` or `postgres`-style drivers where applicable; MongoDB has a first-party Dart driver for modern SDKs. Exact connection pool and `affectedRows` types vary by package version—validate against the driver you standardize on during security review.
+Exact APIs vary by package version—validate during dependency pin review.
 
-## MySQL Idempotent Debit (`mysql_client` style)
+## MySQL: Idempotent Debit
 
 ```dart
 import 'package:mysql_client/mysql_client.dart';
@@ -64,9 +64,7 @@ class LedgerRepository {
 }
 ```
 
-> Parameter binding names and `affectedRows` types vary by package; normalize on **one** supported driver per platform (VM vs WASM) during security review.
-
-## MongoDB Projection (`mongo_dart` style)
+## MongoDB: Projection
 
 ```dart
 import 'package:mongo_dart/mongo_dart.dart';
@@ -85,8 +83,3 @@ Future<void> appendTransfer(Db db, String customerId, String transferId, int amo
   await col.update(where.eq('customer_id', customerId), modifier);
 }
 ```
-
-## Architecture Fit
-
-- Prefer **thin mobile clients** calling a BFF; do not embed privileged DSN credentials in Flutter assets.
-- For offline-first UX, queue commands locally and reconcile with **idempotency keys** generated on device but validated server-side.

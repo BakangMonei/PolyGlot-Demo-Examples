@@ -4,13 +4,13 @@ This guide standardizes **timeouts**, **pool sizing**, and **retry policy** for 
 
 ## Connection Pools
 
-| Runtime | MySQL pool                                                                           | Mongo pool                                     |
-| ------- | ------------------------------------------------------------------------------------ | ---------------------------------------------- |
-| Java    | HikariCP `maximumPoolSize` ≈ `(threads * 1.2)` capped by DB `max_connections` budget | Mongo client: tune `maxPoolSize` per service   |
-| Rust    | `sqlx::pool` `max_connections` same heuristic                                        | `ClientOptions::max_pool_size`                 |
-| C#      | `MySqlDataSource` builder / pool limits                                              | `MongoClientSettings` max connection pool size |
-| Go      | `sql.DB.SetMaxOpenConns`, `SetMaxIdleConns`, `SetConnMaxLifetime`                    | `mongooptions.Client().SetMaxPoolSize`         |
-| Node    | `mysql2` pool `connectionLimit`, `queueLimit`                                        | `MongoClient` `maxPoolSize` in URI or options  |
+| Runtime | MySQL pool | Mongo pool |
+| ------- | ---------- | ---------- |
+| Java | HikariCP `maximumPoolSize` ≈ `(threads * 1.2)` capped by DB `max_connections` budget | Mongo client: tune `maxPoolSize` per service |
+| Rust | `sqlx::pool` `max_connections` same heuristic | `ClientOptions::max_pool_size` |
+| C# | `MySqlDataSource` builder / pool limits | `MongoClientSettings` max connection pool size |
+| Go | `sql.DB.SetMaxOpenConns`, `SetMaxIdleConns`, `SetConnMaxLifetime` | `mongooptions.Client().SetMaxPoolSize` |
+| Node | `mysql2` pool `connectionLimit`, `queueLimit` | `MongoClient` `maxPoolSize` in URI or options |
 
 **Rule of thumb:** pool size is **not** equal to RPS. Size for concurrent _in-flight_ queries at peak, then add 20% headroom.
 
@@ -31,11 +31,11 @@ Map these to:
 
 ## Retries: What Is Safe
 
-| Operation                                                              | Automatic retry                                                                                                        |
-| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Read-only `SELECT`                                                     | Yes, with jittered exponential backoff                                                                                 |
+| Operation | Automatic retry |
+| --------- | ----------------- |
+| Read-only `SELECT` | Yes, with jittered exponential backoff |
 | `INSERT IGNORE` idempotency registration + `UPDATE` in one transaction | **No** mid-transaction retry; retry whole transaction only if the failure was a **transient disconnect before commit** |
-| MongoDB `updateOne` with **monotonic** business condition              | Only if the filter encodes expected version / `expected_mod_count` pattern                                             |
+| MongoDB `updateOne` with **monotonic** business condition | Only if the filter encodes expected version / `expected_mod_count` pattern |
 
 ## Circuit Breaking
 
